@@ -14,10 +14,11 @@ Develop an object-oriented Python code to simulate the navigation of multiple ag
   - Agent FoV size (applicable for next section) (𝑀) 
 - d) The  code  should  track  and  log  the  trajectories  of  agents  until  either  all  agents successfully reach the destination or the maximum episode length is reached. 
 
-![](Aspose.Words.8898c72f-1f43-4d2d-bc24-63a25ca5338d.001.jpeg)
+<div align="center">
+<img src="https://github.com/NightsCold/Multi-Agent-Learning-for-Navigation/blob/main/IMG/001.jpeg")>
+</div>
 
-Fig. 1 – Example snapshot of the simulation environment and agents’ states [1] 
-
+<p align="center">Fig. 1 – Example snapshot of the simulation environment and agents’ states [1]</p>
 ## 2.Independent RL agents
 Based on the simulation environment in the previous step, develop and train *individual single-agent RL algorithms for each agent* with the following assumptions: 
 - a) For each agent, the action space is {up, down, left, right}, and the state space is constrained to agent’s FoV as per the system model in reference [1] (similar to Fig. 1, right side). A reward of +1 is given for reaching the destination. 
