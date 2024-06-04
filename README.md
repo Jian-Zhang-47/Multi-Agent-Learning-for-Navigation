@@ -19,6 +19,7 @@ Develop an object-oriented Python code to simulate the navigation of multiple ag
 </div>
 
 <p align="center">Fig. 1 – Example snapshot of the simulation environment and agents’ states [1]</p>
+
 ## 2.Independent RL agents
 Based on the simulation environment in the previous step, develop and train *individual single-agent RL algorithms for each agent* with the following assumptions: 
 - a) For each agent, the action space is {up, down, left, right}, and the state space is constrained to agent’s FoV as per the system model in reference [1] (similar to Fig. 1, right side). A reward of +1 is given for reaching the destination. 
