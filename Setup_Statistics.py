@@ -114,6 +114,6 @@ print("The grid map is:")
 print(env.grid)
 env.run_simulation()
 for i in range(env.N):
-    print(f"The Route of Agent {i+1} is: ")
+    print(f"The route of Agent {i+1} is: ")
     print(env.agents_route_dict[i+1])
     print()
