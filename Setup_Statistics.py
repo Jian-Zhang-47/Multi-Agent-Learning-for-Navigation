@@ -102,10 +102,10 @@ class GridEnvironment:
             print("Simulation ended without all agents reaching the destination.")
 
 # Parameters
-L = 8  # Grid size
+L = 6  # Grid size
 P = 0.3 # Percentage of obstacles
 N = 3  # Number of agents
-T = 1000  # Maximum episode length
+T = 100  # Maximum episode length
 M = 2  # Agent FoV size
 
 # Create environment and run simulation
