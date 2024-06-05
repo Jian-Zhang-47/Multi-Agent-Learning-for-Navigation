@@ -46,7 +46,7 @@ class GridEnvironment:
                     self.grid[x, y] =  self.agents_id_list[i]
                     self.agents.append((x, y))
                     
-                    ##print(f"agent {i+1} is {x,y}")
+                    #print(f"agent {i+1} is {x,y}")
                     break
 
     def move_agent(self, agent_id):
