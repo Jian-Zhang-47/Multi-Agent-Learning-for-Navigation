@@ -18,11 +18,11 @@ class GridNavigationEnv(gym.Env):
         self.agents_route_dict = {} # Route coordinates of agents
         self.destination = None
         self.steps = 0  # Number of steps
-        self.rewards = [0]*self.N # Rewards of agents
+        self.rewards_dict = {i+1: [] for i in range(self.N)} # Rewards of agents
 
         # Define action and observation space
         self.action_space = spaces.Discrete(4)  # Four possible actions: up, down, left, right
-        #self.observation_space = spaces.Box(low=0, high=max(N, 1), shape=(L, L), dtype=np.int32)
+        self.observation_space = spaces.Box(low=0, high=max(N, 1), shape=(L, L), dtype=np.int32)
         
         self.init_environment()
 
@@ -69,11 +69,12 @@ class GridNavigationEnv(gym.Env):
             dx, dy = 0, 1
 
         nx, ny = x + dx, y + dy
+        self.grid[self.destination] = 0
         if 0 <= nx < self.L and 0 <= ny < self.L and self.grid[nx, ny] == 0:
             self.grid[x, y] = 0
             self.grid[nx, ny] = agent_id
             self.agents[agent_id - 1] = (nx, ny)
-            self.agents_route_dict[agent_id].append(self.agents[agent_id - 1])
+            self.agents_route_dict[agent_id].append(self.agents[agent_id - 1])  # Record the new position of agents
         else:
             self.agents_route_dict[agent_id].append((x, y))
 
@@ -84,36 +85,50 @@ class GridNavigationEnv(gym.Env):
         self.agents_route_dict = {}
         self.destination = None
         self.steps = 0
+        self.rewards_dict = {i+1: [] for i in range(self.N)}
         self.init_environment()
         return self.grid
 
     def step(self, actions):
-        for agent_id, action in enumerate(actions, start=1):
-            self.move_agent(agent_id, action)
-            if self.agents[agent_id - 1] == self.destination:
-                self.rewards[agent_id-1] += self.T # Reward for reaching destination
+        for a_id in self.agents_id_list:
+            if self.agents[a_id-1] == self.destination:
+                self.agents_id_list.remove(a_id)
             else:
-                self.rewards[agent_id-1] += -1 # Penalty for each move
+                for agent,action in enumerate(actions, start=1):
+                    if a_id == agent:
+                        self.move_agent(a_id, action)
+                        x, y = self.agents[a_id - 1]
+                        dest_x, dest_y = self.destination
+                        distance = abs(x - dest_x) + abs(y - dest_y)
+                        if distance == 0:
+                            self.rewards_dict[a_id].append(self.T) # Reward for reaching destination
+                            self.agents_id_list.remove(a_id)
+                        else:
+                            self.rewards_dict[a_id].append(round(1/(distance + 1),4)) # Penalty for each move
         self.steps += 1
         done = all(self.agents[agent_id - 1] == self.destination for agent_id in self.agents_id_list)
-        terminate = self.steps > self.T
-        return self.grid, self.rewards, done, terminate, self.agents_route_dict
+        terminate = self.steps >= self.T
+        return self.grid, self.rewards_dict, done, terminate, self.agents_route_dict, self.steps, self.destination
 
     def render(self, mode='human'):
         for row in self.grid:
             print('   '.join(str(x) for x in row))
 
 
-
 if __name__ == "__main__":
-    env = GridNavigationEnv(L=3, P=0.3, N=1, T=10)
+    env = GridNavigationEnv(L=4, P=0.1, N=3, T=10)
     obs = env.reset()
     done = False
     terminate = False
 
 while not done and not terminate:
     actions = [env.action_space.sample() for _ in range(env.N)]  # Random actions
-    obs, reward, done, terminate, info = env.step(actions)
+    obs, rewards, done, terminate, routes, steps, destination= env.step(actions)
+    print(f'In {steps} steps')
     env.render()
-    print(f"Reward: {reward}")
-    print(f"Route: {info}\n")
+    print('')
+print(f"Destination: {destination}")
+print(f"Reward: {rewards}")
+print(f"All agents have reached the destination: {done}")
+print(f"Some agents are stuck somewhere: {terminate}")
+print(f"Route: {routes}\n")
