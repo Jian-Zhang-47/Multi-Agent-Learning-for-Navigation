@@ -120,6 +120,10 @@ if __name__ == "__main__":
     grid_map = env.reset()
     done = False
     terminate = False
+    print(f'In 0 step')
+    for row in env.grid:
+        print('   '.join(str(x) for x in row))
+    print()
 
 while not done and not terminate:
     actions = [env.action_space.sample() for _ in range(env.N)]  # Random actions
