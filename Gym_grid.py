@@ -4,7 +4,7 @@ import numpy as np
 import random
 
 class GridNavigationEnv(gym.Env):
-    def __init__(self, L=6, P=0.3, N=1, T=100):
+    def __init__(self, L=6, P=0.3, N=1, T=100, M = 6):
         super(GridNavigationEnv, self).__init__()
         self.L = L  # Grid size
         self.P = P  # Number of obstacles as a percentage of grid size
@@ -116,14 +116,14 @@ class GridNavigationEnv(gym.Env):
 
 
 if __name__ == "__main__":
-    env = GridNavigationEnv(L=4, P=0.1, N=3, T=10)
-    obs = env.reset()
+    env = GridNavigationEnv(L=4, P=0.1, N=3, T=10, M=4)
+    grid_map = env.reset()
     done = False
     terminate = False
 
 while not done and not terminate:
     actions = [env.action_space.sample() for _ in range(env.N)]  # Random actions
-    obs, rewards, done, terminate, routes, steps, destination= env.step(actions)
+    grid_map, rewards, done, terminate, routes, steps, destination= env.step(actions)
     print(f'In {steps} steps')
     env.render()
     print('')
