@@ -125,14 +125,14 @@ if __name__ == "__main__":
         print('   '.join(str(x) for x in row))
     print()
 
-while not done and not terminate:
-    actions = [env.action_space.sample() for _ in range(env.N)]  # Random actions
-    grid_map, rewards, done, terminate, routes, steps, destination= env.step(actions)
-    print(f'In {steps} steps')
-    env.render()
-    print('')
-print(f"Destination: {destination}")
-print(f"Reward: {rewards}")
-print(f"All agents have reached the destination: {done}")
-print(f"Some agents are stuck somewhere: {terminate}")
-print(f"Route: {routes}\n")
+    while not done and not terminate:
+        actions = [env.action_space.sample() for _ in range(env.N)]  # Random actions
+        grid_map, rewards, done, terminate, routes, steps, destination= env.step(actions)
+        print(f'In {steps} steps')
+        env.render()
+        print('')
+    print(f"Destination: {destination}")
+    print(f"Reward: {rewards}")
+    print(f"All agents have reached the destination: {done}")
+    print(f"Some agents are stuck somewhere: {terminate}")
+    print(f"Route: {routes}\n")
