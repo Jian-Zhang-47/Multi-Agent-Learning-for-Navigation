@@ -19,7 +19,7 @@ class GridNavigationEnv(gym.Env):
         self.destination = None
         self.steps = 0  # Number of steps
         self.rewards_dict = {i+1: [] for i in range(self.N)} # Rewards of agents
-
+        self.distance_dict = {i+1: [] for i in range(self.N)} # Distance between agents and destination
         # Define action and observation space
         self.action_space = spaces.Discrete(4)  # Four possible actions: up, down, left, right
         self.observation_space = spaces.Box(low=0, high=max(N, 1), shape=(L, L), dtype=np.int32)
@@ -100,6 +100,7 @@ class GridNavigationEnv(gym.Env):
                         x, y = self.agents[a_id - 1]
                         dest_x, dest_y = self.destination
                         distance = abs(x - dest_x) + abs(y - dest_y)
+                        self.distance_dict[a_id].append(distance) # Record the distance in dict
                         if distance == 0:
                             self.rewards_dict[a_id].append(self.T) # Reward for reaching destination
                             self.agents_id_list.remove(a_id)
@@ -108,7 +109,7 @@ class GridNavigationEnv(gym.Env):
         self.steps += 1
         done = all(self.agents[agent_id - 1] == self.destination for agent_id in self.agents_id_list)
         terminate = self.steps >= self.T
-        return self.grid, self.rewards_dict, done, terminate, self.agents_route_dict, self.steps, self.destination
+        return self.grid, self.rewards_dict, done, terminate, self.agents_route_dict, self.steps, self.destination, self.distance_dict
 
     def render(self, mode='human'):
         for row in self.grid:
@@ -127,7 +128,7 @@ if __name__ == "__main__":
 
     while not done and not terminate:
         actions = [env.action_space.sample() for _ in range(env.N)]  # Random actions
-        grid_map, rewards, done, terminate, routes, steps, destination= env.step(actions)
+        grid_map, rewards, done, terminate, routes, steps, destination, distance= env.step(actions)
         print(f'In {steps} steps')
         env.render()
         print('')
