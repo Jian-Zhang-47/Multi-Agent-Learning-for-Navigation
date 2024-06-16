@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
 from copy import copy
-from Gym_grid import GridNavigationEnv
+from FoV import GridNavigationEnv
 import matplotlib.pyplot as plt
 import math
 
@@ -23,7 +23,7 @@ terminate = False
 
 while not done and not terminate:
     actions = [env.action_space.sample() for _ in range(env.N)]  # Random actions
-    grid_map, rewards, done, terminate, routes, steps, destination, distance= env.step(actions)
+    grid_map, rewards, done, terminate, routes, steps, destination, distance, fov= env.step(actions)
 print(f"Destination: {destination}")
 print(f"Reward: {rewards}")
 print(f"All agents have reached the destination: {done}")
