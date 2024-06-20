@@ -243,20 +243,20 @@ class GridNavigationEnv(gym.Env):
     def render_fov(self, fov):
         for key, coordinates in fov.items():
             if not coordinates:
-                print(f"Fov map for key {key} is empty.")
+                print(f"Fov map for Agent {key} is empty.")
                 continue
             max_x = max([coord[0] for coord in coordinates]) + 1
             max_y = max([coord[1] for coord in coordinates]) + 1
             grid_map = [[' ' for _ in range(max_y)] for _ in range(max_x)]
             for (x, y), state in coordinates.items():
                 grid_map[x][y] = state
-            print(f"Fov map for key {key}:")
+            print(f"Fov map for Agent {key}:")
             for row in grid_map:
                 print(' '.join(str(x) for x in row))
 
 
 if __name__ == "__main__":
-    env = GridNavigationEnv(L=8, P=0.1, N=1, T=5, M=3)
+    env = GridNavigationEnv(L=8, P=0.1, N=2, T=5, M=3)
     grid_map = env.reset()
     done = False
     terminate = False
