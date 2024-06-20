@@ -23,7 +23,7 @@ class GridNavigationEnv(gym.Env):
         self.rewards_dict = {i + 1: [] for i in range(self.N)}  # Rewards of agents
         self.distance_dict = {i + 1: [] for i in range(self.N)}  # Distance between agents and destination
         self.fov = {i + 1: [] for i in range(self.N)}  # FoV of agents
-        self.view_angle = math.pi/2 # View angle of agent
+        self.view_angle = math.radians(91) # View angle of agent
         self.action_space = spaces.Discrete(4)  # Four possible actions: up, down, left, right
         self.init_environment()
 
