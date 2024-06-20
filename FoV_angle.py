@@ -253,6 +253,7 @@ class GridNavigationEnv(gym.Env):
             print(f"Fov map for Agent {key}:")
             for row in grid_map:
                 print(' '.join(str(x) for x in row))
+                
 
 
 if __name__ == "__main__":
