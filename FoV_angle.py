@@ -87,7 +87,6 @@ class GridNavigationEnv(gym.Env):
                 for j in range(-self.M,self.M+1):
                     xi,yj,g1,g2,gij,d = self.possible_fov(agent_pos,i,j)
                     if 0 <= xi < self.L and 0 <= yj < self.L and g1<=gij<=g2 and d<=self.M:
-                        print(xi,yj,g1,g2,gij,d)
                         fov.append((xi, yj))
 
         # Move to down
@@ -253,7 +252,7 @@ class GridNavigationEnv(gym.Env):
             print(f"Fov map for Agent {key}:")
             for row in grid_map:
                 print(' '.join(str(x) for x in row))
-                
+
 
 
 if __name__ == "__main__":
