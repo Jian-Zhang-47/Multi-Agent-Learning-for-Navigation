@@ -23,7 +23,7 @@ class GridNavigationEnv(gym.Env):
         self.rewards_dict = {i + 1: [] for i in range(self.N)}  # Rewards of agents
         self.distance_dict = {i + 1: [] for i in range(self.N)}  # Distance between agents and destination
         self.fov = {i + 1: [] for i in range(self.N)}  # FoV of agents
-        self.view_angle = math.radians(91) # View angle of agent
+        self.view_angle = 300 # View angle of agent
         self.action_space = spaces.Discrete(4)  # Four possible actions: up, down, left, right
         self.init_environment()
 
@@ -69,47 +69,64 @@ class GridNavigationEnv(gym.Env):
         x2,y2 = point2
         return math.sqrt((x2 - x1)**2+(y2 - y1)**2)
     
-    def possible_fov(self,agent_pos,i,j):
-        x, y = agent_pos
-        xi, yj = x + i, y + j
-        ij_pos = (xi, yj)
-        g1 = -1/math.tan(self.view_angle/2) # Gradient of the 1st view field boundary
-        g2 = 1/math.tan(self.view_angle/2) # Gradient of the 2nd view field boundary
-        d = self.calculate_distance(agent_pos,ij_pos) # Distance between grid and agent
-        gij = self.calculate_gradient(agent_pos,ij_pos) # Gradient of the line between grid and agent  
-        return xi,yj,g1,g2,gij,d
+
 
     def get_fov(self, agent_pos, dx, dy):
         fov = []
-        # Move to up
-        if dx == -1 and dy == 0:
-            for i in range(-self.M,1):
-                for j in range(-self.M,self.M+1):
-                    xi,yj,g1,g2,gij,d = self.possible_fov(agent_pos,i,j)
-                    if 0 <= xi < self.L and 0 <= yj < self.L and g1<=gij<=g2 and d<=self.M:
-                        fov.append((xi, yj))
+        fov_circle = []
+        x, y = agent_pos
+        for i in range(-self.M,self.M+1):
+            for j in range(-self.M,self.M+1):
+                xi, yj = x + i, y + j
+                ij_pos = (xi, yj)
+                d = self.calculate_distance(agent_pos,ij_pos) # Distance between grid and agent
+                if 0 <= xi < self.L and 0 <= yj < self.L and d<= self.M:
+                    fov_circle.append(ij_pos)
 
-        # Move to down
-        if dx == 1 and dy == 0:
-            for i in range(0,self.M+1):
-                for j in range(-self.M,self.M+1):
-                    xi,yj,g1,g2,gij,d = self.possible_fov(agent_pos,i,j)
-                    if 0 <= xi < self.L and 0 <= yj < self.L and g1<=gij<=g2 and d<=self.M:
-                        fov.append((xi, yj))
-        # Move to left
-        if dx == 0 and dy == -1:
-            for i in range(-self.M,self.M+1):
-                for j in range(-self.M,1):
-                    xi,yj,g1,g2,gij,d = self.possible_fov(agent_pos,i,j)
-                    if 0 <= xi < self.L and 0 <= yj < self.L and (g2<=gij or gij<=g1 or gij == 'inf') and d<=self.M:
-                        fov.append((xi, yj))
-        # Move to right
-        if dx == 0 and dy == 1:
-            for i in range(-self.M,self.M+1):
-                for j in range(0,self.M+1):
-                    xi,yj,g1,g2,gij,d = self.possible_fov(agent_pos,i,j)
-                    if 0 <= xi < self.L and 0 <= yj < self.L and (g2<=gij or gij<=g1 or gij == 'inf') and d<=self.M:
-                        fov.append((xi, yj))
+        if self.view_angle < 180:
+            g1 = -1/math.tan(math.radians(self.view_angle/2)) # Gradient of the 1st view field boundary
+            g2 = 1/math.tan(math.radians(self.view_angle/2)) # Gradient of the 2nd view field boundary
+            for p in fov_circle:
+                g_p = self.calculate_gradient(agent_pos,p) # Gradient of the line between grid and agent
+                if dx == -1 and dy == 0:    # Move to up
+                    if g1<=g_p<=g2 and p[0] <= x:
+                        fov.append(p)
+                elif dx == 1 and dy == 0:    # Move to down
+                    if g1<=g_p<=g2 and p[0] >= x:
+                        fov.append(p)
+                elif dx == 0 and dy == -1:  # Move to left
+                    if (g2<=g_p or g_p<=g1 or math.isinf(g_p)) and p[1] <= y:
+                        fov.append(p)
+                elif dx == 0 and dy == 1:  # Move to right
+                    if (g2<=g_p or g_p<=g1 or math.isinf(g_p)) and p[1] >= y:
+                        fov.append(p)
+        elif self.view_angle >= 180:
+            g1 = -1/math.tan(math.radians((360-self.view_angle)/2))
+            g2 = 1/math.tan(math.radians((360-self.view_angle)/2))
+            for p in fov_circle:
+                g_p = self.calculate_gradient(agent_pos,p) # Gradient of the line between grid and agent
+                if dx == -1 and dy == 0:    # Move to up
+                    if p[0] <= x:
+                        fov.append(p)
+                    elif p[0] > x and (g_p >= g2 or g_p <= g1):
+                        fov.append(p)
+                elif dx == 1 and dy == 0: # Move to down
+                    if p[0] >= x:
+                        fov.append(p)
+                    elif p[0] < x and (g_p >= g2 or g_p <= g1):
+                        fov.append(p)
+                elif dx == 0 and dy == -1:  # Move to left
+                    if p[1] <= y:
+                        fov.append(p)
+                    elif p[1] > y and (g1<=g_p<=g2):
+                        fov.append(p)
+                elif dx == 0 and dy == 1:  # Move to right
+                    if p[1] >= y:
+                        fov.append(p)
+                    elif p[1] < y and (g1<=g_p<=g2):
+                        fov.append(p)
+        if agent_pos not in fov:
+            fov.append(agent_pos)
 
         # Update the FoV state
         state_map = {pos: 'S-' for pos in fov}
@@ -256,7 +273,7 @@ class GridNavigationEnv(gym.Env):
 
 
 if __name__ == "__main__":
-    env = GridNavigationEnv(L=8, P=0.1, N=2, T=5, M=3)
+    env = GridNavigationEnv(L=8, P=0.1, N=2, T=2, M=3)
     grid_map = env.reset()
     done = False
     terminate = False
