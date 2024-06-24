@@ -23,6 +23,7 @@ class GridNavigationEnv(gym.Env):
         self.rewards_dict = {i + 1: [] for i in range(self.N)}  # Rewards of agents
         self.distance_dict = {i + 1: [] for i in range(self.N)}  # Distance between agents and destination
         self.fov = {i + 1: [] for i in range(self.N)}  # FoV of agents
+        self.fov_rel = {i + 1: [] for i in range(self.N)}  # FoV of agents, agent as the origin
         self.view_angle = 90 # View angle of agent
         self.action_space = spaces.Discrete(4)  # Four possible actions: up, down, left, right
         self.init_environment()
@@ -58,6 +59,10 @@ class GridNavigationEnv(gym.Env):
                     self.agents_route_dict[self.agents_id_list[i]] = [self.agents[i]]  # Record the original position of agents
                     break
             self.fov[i+1]=(self.get_fov(self.agents[i],-1,0)) # Get FoV at step 0. The default view is up.
+            self.fov_rel[i+1] = self.relative_coordinates(self.fov[i+1],self.agents[i])
+
+    def relative_coordinates(self,original_dict, agent_pos):    # Set the top left grid of FoV as the origin
+        return { (k[0] - agent_pos[0] + self.M, k[1] - agent_pos[1] + self.M): v for k, v in original_dict.items() }
 
     def calculate_gradient(self, point1, point2):
         x1, y1 = point1
@@ -84,21 +89,23 @@ class GridNavigationEnv(gym.Env):
                     fov_circle.append(ij_pos)
 
         if self.view_angle < 180:
-            g1 = -1/math.tan(math.radians(self.view_angle/2)) # Gradient of the 1st view field boundary
-            g2 = 1/math.tan(math.radians(self.view_angle/2)) # Gradient of the 2nd view field boundary
+            g1 = round(-1/math.tan(math.radians(self.view_angle/2)),4) # Gradient of the 1st view field boundary
+            g2 = round(1/math.tan(math.radians(self.view_angle/2)),4) # Gradient of the 2nd view field boundary
+            print(f'g1={g1},g2={g2}')
             for p in fov_circle:
                 g_p = self.calculate_gradient(agent_pos,p) # Gradient of the line between grid and agent
                 if dx == -1 and dy == 0:    # Move to up
-                    if g1<=g_p<=g2 and p[0] <= x:
+                    if g1 <= g_p <= g2 and p[0] <= x:
                         fov.append(p)
                 elif dx == 1 and dy == 0:    # Move to down
-                    if g1<=g_p<=g2 and p[0] >= x:
+                    if g1 <= g_p <= g2 and p[0] >= x:
                         fov.append(p)
                 elif dx == 0 and dy == -1:  # Move to left
-                    if (g2<=g_p or g_p<=g1 or math.isinf(g_p)) and p[1] <= y:
+                    if (g_p <= g1 or g_p >= g2 or g_p == float('inf')) and p[1] <= y:
                         fov.append(p)
                 elif dx == 0 and dy == 1:  # Move to right
-                    if (g2<=g_p or g_p<=g1 or math.isinf(g_p)) and p[1] >= y:
+                    print(f'p:{p},g_p = {g_p}')
+                    if (g_p <= g1 or g_p >= g2 or g_p == float('inf')) and p[1] >= y:
                         fov.append(p)
         elif self.view_angle >= 180:
             g1 = -1/math.tan(math.radians((360-self.view_angle)/2))
@@ -159,7 +166,7 @@ class GridNavigationEnv(gym.Env):
                 g = self.calculate_gradient(p,agent_pos)
                 d_ap = self.calculate_distance(p,agent_pos)
                 d_op = self.calculate_distance(p,obs) 
-                if (min(g1,g2)>g or g>max(g1,g2) or g == 'inf') and d_ap > d_ao and d_ap > d_op:
+                if (min(g1,g2)>g or g>max(g1,g2) or g == float('inf')) and d_ap > d_ao and d_ap > d_op:
                     state_map[p] = 'S0'
 
         if xb < x and yb < y:   # The obstacle is on the 'Up Left' of the agent.
@@ -219,6 +226,7 @@ class GridNavigationEnv(gym.Env):
         else:
             self.agents_route_dict[agent_id].append((x, y))
         self.fov[agent_id]=(self.get_fov(self.agents[agent_id - 1],dx, dy))  # Get FoV after moving
+        self.fov_rel[agent_id] = self.relative_coordinates(self.fov[agent_id],self.agents[agent_id - 1])
 
     def reset(self):
         self.grid.fill(0)
@@ -250,7 +258,7 @@ class GridNavigationEnv(gym.Env):
         self.steps += 1
         done = all(self.agents[agent_id - 1] == self.destination for agent_id in self.agents_id_list)
         terminate = self.steps >= self.T
-        return self.grid, self.rewards_dict, done, terminate, self.agents_route_dict, self.steps, self.destination, self.distance_dict, self.fov
+        return self.grid, self.rewards_dict, done, terminate, self.agents_route_dict, self.steps, self.destination, self.distance_dict, self.fov_rel, self.fov
 
     def render(self, mode='human'):
         for row in self.grid:
@@ -261,34 +269,33 @@ class GridNavigationEnv(gym.Env):
             if not coordinates:
                 print(f"Fov map for Agent {key} is empty.")
                 continue
-            max_x = max([coord[0] for coord in coordinates]) + 1
-            max_y = max([coord[1] for coord in coordinates]) + 1
-            grid_map = [[' ' for _ in range(max_y)] for _ in range(max_x)]
+            FoV_map = [['  ' for _ in range(0,2*self.M+1)] for _ in range(0,2*self.M+1)]
             for (x, y), state in coordinates.items():
-                grid_map[x][y] = state
+                FoV_map[x][y] = state
             print(f"Fov map for Agent {key}:")
-            for row in grid_map:
-                print(' '.join(str(x) for x in row))
+            for row in FoV_map:
+                print('  '.join(str(x) for x in row))
 
 
 
 if __name__ == "__main__":
-    env = GridNavigationEnv(L=8, P=0.1, N=2, T=2, M=3)
+    env = GridNavigationEnv(L=8, P=0.1, N=2, T=5, M=2)
     grid_map = env.reset()
     done = False
     terminate = False
     print(f'In 0 step')
     env.render()
-    env.render_fov(env.fov)
+    env.render_fov(env.fov_rel)
     print()
 
     while not done and not terminate:
         actions = [env.action_space.sample() for _ in range(env.N)]  # Random actions
-        grid_map, rewards, done, terminate, routes, steps, destination, distance, fov = env.step(actions)
+        grid_map, rewards, done, terminate, routes, steps, destination, distance, fov_rel,fov = env.step(actions)
+        print(fov_rel)
         print(fov)
         print(f'In {steps} steps')
         env.render()
-        env.render_fov(fov)
+        env.render_fov(fov_rel)
         print('')
     print(f"Destination: {destination}")
     print(f"Reward: {rewards}")
