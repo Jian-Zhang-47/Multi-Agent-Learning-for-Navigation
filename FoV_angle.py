@@ -91,7 +91,6 @@ class GridNavigationEnv(gym.Env):
         if self.view_angle < 180:
             g1 = round(-1/math.tan(math.radians(self.view_angle/2)),4) # Gradient of the 1st view field boundary
             g2 = round(1/math.tan(math.radians(self.view_angle/2)),4) # Gradient of the 2nd view field boundary
-            print(f'g1={g1},g2={g2}')
             for p in fov_circle:
                 g_p = self.calculate_gradient(agent_pos,p) # Gradient of the line between grid and agent
                 if dx == -1 and dy == 0:    # Move to up
