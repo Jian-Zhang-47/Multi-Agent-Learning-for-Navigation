@@ -103,7 +103,6 @@ class GridNavigationEnv(gym.Env):
                     if (g_p <= g1 or g_p >= g2 or g_p == float('inf')) and p[1] <= y:
                         fov.append(p)
                 elif dx == 0 and dy == 1:  # Move to right
-                    print(f'p:{p},g_p = {g_p}')
                     if (g_p <= g1 or g_p >= g2 or g_p == float('inf')) and p[1] >= y:
                         fov.append(p)
         elif self.view_angle >= 180:
