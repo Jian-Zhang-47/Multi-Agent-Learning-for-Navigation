@@ -1,11 +1,9 @@
-import random
-import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
 from copy import copy
-from FoV import GridNavigationEnv
+from FoV_angle import GridNavigationEnv
 import matplotlib.pyplot as plt
-import math
+
 
 # Parameters
 L = 8  # Grid size
@@ -23,14 +21,19 @@ terminate = False
 
 while not done and not terminate:
     actions = [env.action_space.sample() for _ in range(env.N)]  # Random actions
-    grid_map, rewards, done, terminate, routes, steps, destination, distance, fov= env.step(actions)
-print(f"Destination: {destination}")
+    observation, rewards, terminate, info, done= env.step(actions)
+    print(observation)
+    print(f'In {info['steps_number']} steps')
+    env.render()
+    env.render_fov(observation)
+    print('')
+print(f"Destination: {info['destination']}")
 print(f"Reward: {rewards}")
 print(f"All agents have reached the destination: {done}")
 print(f"Some agents are stuck somewhere: {terminate}")
-print(f"Route: {routes}\n")
+print(f"Route: {info['agents_route']}\n")
 env.grid[env.destination[0],env.destination[1]] = N+1 # Add destination's position in grip
-background = copy(grid_map) # GIF shows agents' positions in the last step
+background = copy(info['grid_map']) # GIF shows agents' positions in the last step
 frames = []
 
 # Save as a gif to show the routes
@@ -41,13 +44,13 @@ def save_frames_as_gif(frames, file):
     def animate(i):
         patch.set_data(frames[i])
     anim = animation.FuncAnimation(plt.gcf(), animate, frames = len(frames), interval=50)
-    anim.save(file, writer='imagemagick', fps=60)
+    anim.save(file, writer='pillow', fps=60)
 
 for t in range(env.T):
     grid_with_nodes = copy(background)
     for i in range(env.N):
-        if t < len(routes[i+1]):
-            node_loc = routes[i+1][t]
+        if t < len(info['agents_route'][i+1]):
+            node_loc = info['agents_route'][i+1][t]
         grid_with_nodes[node_loc[0], node_loc[1]] = i+1 
     frames.append(grid_with_nodes)
 save_frames_as_gif(frames, 'Routes.gif')
@@ -57,7 +60,7 @@ save_frames_as_gif(frames, 'Routes.gif')
 fig1, ax1 = plt.subplots()
 x = list(range(T))
 for i in range(N):
-    y = distance[i+1]
+    y = info['distances'][i+1]
     if len(y)<len(x):
         y.extend([None] * (len(x) - len(y)))
     ax1.plot(x,y,label=f'Agent {i+1}')
@@ -73,7 +76,7 @@ x = []
 y = []
 for i in range(N):
     x.append(f'{i+1}')
-    y.append(len(routes[i+1]))
+    y.append(len(info['agents_route'][i+1]))
 ax2.bar(x,y)
 ax2.set_xlabel('agent ID')
 ax2.set_ylabel('Numbers of step')
