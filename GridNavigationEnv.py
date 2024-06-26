@@ -3,6 +3,17 @@ from gymnasium import spaces
 import numpy as np
 import random
 import math
+import config as cfg
+
+def dict_to_arr(dict):
+    row = col = 2*cfg.M+1
+    array_3d = np.full((cfg.N, row, col),'  ', dtype=object)
+
+    for a_id, sub_dict in dict.items():
+        for (i, j), value in sub_dict.items():
+            array_3d[a_id-1][i, j] = value
+    return array_3d
+
 
 
 class GridNavigationEnv(gym.Env):
@@ -20,7 +31,7 @@ class GridNavigationEnv(gym.Env):
         self.agents_route_dict = {}  # Route coordinates of agents
         self.destination = None
         self.steps = 0  # Number of steps
-        self.rewards = {i + 1: 0 for i in range(self.N)}  # Rewards of agents
+        self.rewards = np.zeros(self.N)  # Rewards of agents
         self.distance_dict = {i + 1: [] for i in range(self.N)}  # Distance between agents and destination
         self.fov = {i + 1: [] for i in range(self.N)}  # FoV of agents
         self.fov_rel = {i + 1: [] for i in range(self.N)}  # FoV of agents, agent as the origin
@@ -141,71 +152,71 @@ class GridNavigationEnv(gym.Env):
                 state_map[obs] = 'S+'
                 self.blocked_fov_by_obstacle(agent_pos, obs, fov, state_map)
         return state_map
+    
+    def update_S0(self,corner1,corner2,agent_pos,d_ao,obs,fov,state_map):
+        g1 = self.calculate_gradient(agent_pos,corner1)
+        g2 = self.calculate_gradient(agent_pos,corner2)
+        for p in fov:
+            g = self.calculate_gradient(p,agent_pos)
+            d_ap = self.calculate_distance(p,agent_pos) # The distance between agent and p
+            d_op = self.calculate_distance(p,obs) # The distance between p and obs
+            if min(g1,g2)<g<max(g1,g2) and d_ap > d_ao and d_ap > d_op:
+                state_map[p] = 'S0'
+        
+    def update_S0_inf(self,corner1,corner2,agent_pos,d_ao,obs,fov,state_map):
+        g1 = self.calculate_gradient(agent_pos,corner1)
+        g2 = self.calculate_gradient(agent_pos,corner2)
+        for p in fov:
+            g = self.calculate_gradient(p,agent_pos)
+            d_ap = self.calculate_distance(p,agent_pos)
+            d_op = self.calculate_distance(p,obs) 
+            if (min(g1,g2)>g or g>max(g1,g2) or g == float('inf')) and d_ap > d_ao and d_ap > d_op:
+                state_map[p] = 'S0'
 
     def blocked_fov_by_obstacle(self, agent_pos, obs, fov, state_map):
         xb, yb = obs
         x, y = agent_pos
         d_ao = self.calculate_distance(agent_pos,obs) # The distance between agent and obs
 
-        def General_functions1(corner1,corner2):
-            g1 = self.calculate_gradient(agent_pos,corner1)
-            g2 = self.calculate_gradient(agent_pos,corner2)
-            for p in fov:
-                g = self.calculate_gradient(p,agent_pos)
-                d_ap = self.calculate_distance(p,agent_pos) # The distance between agent and p
-                d_op = self.calculate_distance(p,obs) # The distance between p and obs
-                if min(g1,g2)<g<max(g1,g2) and d_ap > d_ao and d_ap > d_op:
-                    state_map[p] = 'S0'
-        
-        def General_functions2(corner1,corner2):
-            g1 = self.calculate_gradient(agent_pos,corner1)
-            g2 = self.calculate_gradient(agent_pos,corner2)
-            for p in fov:
-                g = self.calculate_gradient(p,agent_pos)
-                d_ap = self.calculate_distance(p,agent_pos)
-                d_op = self.calculate_distance(p,obs) 
-                if (min(g1,g2)>g or g>max(g1,g2) or g == float('inf')) and d_ap > d_ao and d_ap > d_op:
-                    state_map[p] = 'S0'
-
         if xb < x and yb < y:   # The obstacle is on the 'Up Left' of the agent.
             corner1 = (xb + 0.5, yb - 0.5)
             corner2 = (xb - 0.5, yb + 0.5)
-            General_functions1(corner1,corner2)
+            self.update_S0(corner1,corner2,agent_pos,d_ao,obs,fov,state_map)
 
         elif xb < x and yb > y:    # ...Up Right...
             corner1 = (xb + 0.5, yb + 0.5)
             corner2 = (xb - 0.5, yb - 0.5)
-            General_functions1(corner1,corner2)
+            self.update_S0(corner1,corner2,agent_pos,d_ao,obs,fov,state_map)
 
         elif xb > x and yb < y:     # ...Down Left...
             corner1 = (xb + 0.5, yb + 0.5)
             corner2 = (xb - 0.5, yb - 0.5)
-            General_functions1(corner1,corner2)
+            self.update_S0(corner1,corner2,agent_pos,d_ao,obs,fov,state_map)
 
         elif xb > x and yb > y:     # ...Down Right...
             corner1 = (xb + 0.5, yb - 0.5)
             corner2 = (xb - 0.5, yb + 0.5)
-            General_functions1(corner1,corner2)
+            self.update_S0(corner1,corner2,agent_pos,d_ao,obs,fov,state_map)
 
         elif xb == x and yb < y:    # ...Left...
             corner1 = (xb + 0.5, yb + 0.5)
             corner2 = (xb - 0.5, yb + 0.5)
-            General_functions2(corner1,corner2)
+            self.update_S0_inf(corner1,corner2,agent_pos,d_ao,obs,fov,state_map)
 
         elif xb == x and yb > y:    # ...Right...
             corner1 = (xb + 0.5, yb - 0.5)
             corner2 = (xb - 0.5, yb - 0.5)
-            General_functions2(corner1,corner2)
+            self.update_S0_inf(corner1,corner2,agent_pos,d_ao,obs,fov,state_map)
 
         elif xb < x and yb == y:    # ...Up...
             corner1 = (xb + 0.5, yb - 0.5)
             corner2 = (xb + 0.5, yb + 0.5)
-            General_functions1(corner1,corner2)
+            self.update_S0(corner1,corner2,agent_pos,d_ao,obs,fov,state_map)
 
         elif xb > x and yb == y:    # ...Down...
             corner1 = (xb - 0.5, yb + 0.5)
             corner2 = (xb - 0.5, yb - 0.5)
-            General_functions1(corner1,corner2)
+            self.update_S0(corner1,corner2,agent_pos,d_ao,obs,fov,state_map)
 
 
 
@@ -225,6 +236,7 @@ class GridNavigationEnv(gym.Env):
             self.agents_route_dict[agent_id].append((x, y))
         self.fov[agent_id]=(self.get_fov(self.agents[agent_id - 1],dx, dy))  # Get FoV after moving
         self.fov_rel[agent_id] = self.relative_coordinates(self.fov[agent_id],self.agents[agent_id - 1])
+        
 
     def reset(self):
         self.grid.fill(0)
@@ -233,7 +245,7 @@ class GridNavigationEnv(gym.Env):
         self.agents_route_dict.clear()
         self.destination = None
         self.steps = 0
-        self.rewards = {i + 1: 0 for i in range(self.N)}
+        self.rewards = np.zeros(self.N)
         self.distance_dict = {i + 1: [] for i in range(self.N)}
         self.fov = {i + 1: [] for i in range(self.N)}
         self.init_environment()
@@ -248,15 +260,15 @@ class GridNavigationEnv(gym.Env):
                 distance = self.calculate_distance(self.agents[a_id - 1],self.destination)
                 self.distance_dict[a_id].append(distance)  # Record the distance in dict
                 if distance == 0:
-                    self.rewards[a_id] += 1  # Reward for reaching destination
+                    self.rewards[a_id-1] += 1  # Reward for reaching destination
                     self.agents_id_list.remove(a_id)
                 else:
-                    self.rewards[a_id] = round(self.rewards[a_id] + round(-(1 + distance/self.L)/self.T, 6),6) # Penalty for each move
-
+                    self.rewards[a_id-1] = round(self.rewards[a_id-1] + round(-(1 + distance/self.L)/self.T, 6),6) # Penalty for each move
+        
         self.steps += 1
         done = all(self.agents[agent_id - 1] == self.destination for agent_id in self.agents_id_list)
         terminate = self.steps >= self.T
-        observation = self.fov_rel
+        observation = dict_to_arr(self.fov_rel)
         rewards = self.rewards
         info = {}
         info['grid_map'] = self.grid
@@ -285,22 +297,25 @@ class GridNavigationEnv(gym.Env):
 
 
 if __name__ == "__main__":
-    env = GridNavigationEnv(L=8, P=0.1, N=2, T=5, M=2)
+    env = GridNavigationEnv(L=cfg.L, P=cfg.P, N=cfg.N, T=cfg.T, M=cfg.M)
     grid_map = env.reset()
     done = False
     terminate = False
     print(f'In 0 step')
     env.render()
-    env.render_fov(env.fov_rel)
+    #env.render_fov(env.fov_rel)
+    print(dict_to_arr(env.fov_rel))
     print()
 
     while not done and not terminate:
         actions = [env.action_space.sample() for _ in range(env.N)]  # Random actions
         observation, rewards, terminate, info, done = env.step(actions)
-        print(observation)
         print(f'In {info['steps_number']} steps')
         env.render()
-        env.render_fov(observation)
+        print('')
+        env.render_fov(env.fov_rel)
+        print(env.fov_rel)
+        print(observation)
         print('')
     print(f"Destination: {info['destination']}")
     print(f"Reward: {rewards}")
