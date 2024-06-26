@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib import animation
 from copy import copy
-from FoV_angle import GridNavigationEnv
+from GridNavigationEnv import GridNavigationEnv
 import matplotlib.pyplot as plt
 
 

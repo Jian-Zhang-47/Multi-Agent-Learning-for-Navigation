@@ -1,7 +1,7 @@
 import numpy as np
 from agent import Agent
 from utils import plot_learning_curve, make_env
-from FoV_angle import GridNavigationEnv
+from GridNavigationEnv import GridNavigationEnv
 
 env = GridNavigationEnv
 best_score = -np.inf
