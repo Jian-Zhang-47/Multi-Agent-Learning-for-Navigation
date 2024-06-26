@@ -20,7 +20,7 @@ class GridNavigationEnv(gym.Env):
         self.agents_route_dict = {}  # Route coordinates of agents
         self.destination = None
         self.steps = 0  # Number of steps
-        self.rewards_dict = {i + 1: [] for i in range(self.N)}  # Rewards of agents
+        self.rewards = {i + 1: 0 for i in range(self.N)}  # Rewards of agents
         self.distance_dict = {i + 1: [] for i in range(self.N)}  # Distance between agents and destination
         self.fov = {i + 1: [] for i in range(self.N)}  # FoV of agents
         self.fov_rel = {i + 1: [] for i in range(self.N)}  # FoV of agents, agent as the origin
@@ -233,7 +233,7 @@ class GridNavigationEnv(gym.Env):
         self.agents_route_dict.clear()
         self.destination = None
         self.steps = 0
-        self.rewards_dict = {i + 1: [] for i in range(self.N)}
+        self.rewards = {i + 1: 0 for i in range(self.N)}
         self.distance_dict = {i + 1: [] for i in range(self.N)}
         self.fov = {i + 1: [] for i in range(self.N)}
         self.init_environment()
@@ -248,16 +248,24 @@ class GridNavigationEnv(gym.Env):
                 distance = self.calculate_distance(self.agents[a_id - 1],self.destination)
                 self.distance_dict[a_id].append(distance)  # Record the distance in dict
                 if distance == 0:
-                    self.rewards_dict[a_id].append(self.T)  # Reward for reaching destination
+                    self.rewards[a_id] += 1  # Reward for reaching destination
                     self.agents_id_list.remove(a_id)
                 else:
-                    self.rewards_dict[a_id].append(round(1 / (distance + 1), 4))  # Penalty for each move
+                    self.rewards[a_id] = round(self.rewards[a_id] + round(-(1 + distance/self.L)/self.T, 6),6) # Penalty for each move
 
         self.steps += 1
         done = all(self.agents[agent_id - 1] == self.destination for agent_id in self.agents_id_list)
         terminate = self.steps >= self.T
-        return self.grid, self.rewards_dict, done, terminate, self.agents_route_dict, self.steps, self.destination, self.distance_dict, self.fov_rel, self.fov
-
+        observation = self.fov_rel
+        rewards = self.rewards
+        info = {}
+        info['grid_map'] = self.grid
+        info['agents_route'] = self.agents_route_dict
+        info['steps_number'] = self.steps
+        info['distances'] = self.distance_dict
+        info['destination'] = self.destination
+        return observation, rewards, terminate, info, done
+    
     def render(self, mode='human'):
         for row in self.grid:
             print('   '.join(str(x) for x in row))
@@ -288,15 +296,14 @@ if __name__ == "__main__":
 
     while not done and not terminate:
         actions = [env.action_space.sample() for _ in range(env.N)]  # Random actions
-        grid_map, rewards, done, terminate, routes, steps, destination, distance, fov_rel,fov = env.step(actions)
-        print(fov_rel)
-        print(fov)
-        print(f'In {steps} steps')
+        observation, rewards, terminate, info, done = env.step(actions)
+        print(observation)
+        print(f'In {info['steps_number']} steps')
         env.render()
-        env.render_fov(fov_rel)
+        env.render_fov(observation)
         print('')
-    print(f"Destination: {destination}")
+    print(f"Destination: {info['destination']}")
     print(f"Reward: {rewards}")
     print(f"All agents have reached the destination: {done}")
     print(f"Some agents are stuck somewhere: {terminate}")
-    print(f"Route: {routes}\n")
+    print(f"Route: {info['agents_route']}\n")
