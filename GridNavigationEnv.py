@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 import random
 import math
+from matplotlib.ticker import FuncFormatter
 
 import config as cfg
 
@@ -87,8 +88,7 @@ class GridNavigationEnv(gym.Env):
                     self.agents_id_list.append(i + 1)  # Agent ID
                     self.grid[x, y] = self.agents_id_list[i]
                     self.agents.append((x, y))
-                    self.agents_route_dict[self.agents_id_list[i]] = [
-                        self.agents[i]]  # Record the original position of agents
+                    self.agents_route_dict[self.agents_id_list[i]] = [self.agents[i]]  # Record the original position of agents
                     break
             self.fov[i + 1] = (self.get_fov(self.agents[i], -1, 0))  # Get FoV at step 0. The default view is up.
             self.fov_rel[i + 1] = self.relative_coordinates(self.fov[i + 1], self.agents[i])
@@ -282,19 +282,20 @@ class GridNavigationEnv(gym.Env):
                     self.rewards[a_id - 1] = 1  # Reward for reaching destination
                     self.agents_id_list.remove(a_id)
                 else:
-                    self.rewards[a_id - 1] = - 0.01  # Penalty for each move
+                    self.rewards[a_id - 1] = self.L/distance # Penalty for each move
 
         self.steps += 1
         done = all(self.agents[agent_id - 1] == self.destination for agent_id in self.agents_id_list)
         terminate = self.steps >= self.T
         observation = dict_to_arr(self.fov_rel)
+        rewards = self.rewards
         info = {}
         info['grid_map'] = self.grid
         info['agents_route'] = self.agents_route_dict
         info['steps_number'] = self.steps
         info['distances'] = self.distance_dict
         info['destination'] = self.destination
-        return observation, self.rewards, terminate, info, done
+        return observation, rewards, terminate, info, done
 
     def render(self, mode='human'):
         for row in self.grid:
@@ -346,20 +347,21 @@ if __name__ == "__main__":
             if np.random.random() < epsilon:
                 actions = np.array([env.action_space.sample() for _ in range(env.N)])  # Random actions
             else:
-                np.array([d3ql_algorithm.get_model_output(observation[i, :, :].flatten(), i)
+                actions = np.array([d3ql_algorithm.get_model_output(observation[i, :, :].flatten(), i)
                           for i in range(env.N)])  # Intelligent actions
 
             observation, rewards, terminate, info, done = env.step(actions)
+            rewards_this_episode.append(rewards.mean())
             print(f'done is {done}')
             print(f"In {info['steps_number']} steps")
-            env.render()
+            
+            #env.render()
             print('')
-            env.render_fov(env.fov_rel)
-            print(env.fov_rel)
-            print(observation)
-            print('')
+            #env.render_fov(env.fov_rel)
+            #print(env.fov_rel)
+            #print(observation)
+            #print('')
 
-            rewards_this_episode.append(rewards.mean())
 
             actions_encoded = np.array([return_one_hot_vector(a) for a in actions])
             buffer.store_experience(old_observation.reshape(cfg.N, -1),
@@ -380,67 +382,41 @@ if __name__ == "__main__":
             print(f"Reward: {rewards}")
             print(f"All agents have reached the destination: {done}")
             print(f"Some agents are stuck somewhere: {terminate}")
-            print(f"Route: {info['agents_route']}\n")
+            #print(f"Route: {info['agents_route']}\n")
+        done = False
+        terminate = False
 
         is_successful[ep] = done
         average_rewards[ep] = np.array(rewards_this_episode).mean() if len(rewards_this_episode) > 0 else 0
+        print(f'rewards_this_episode:{rewards_this_episode}')
+        print(f'average_rewards:{average_rewards}')
 
     print('*****************************************')
     print(f'Success rate for {cfg.episode_num} episodes was {is_successful.mean() * 100}%')
     print(f'Average reward for {cfg.episode_num} episodes was {round(average_rewards.mean(), 3)}')
     print('*****************************************')
 
+
     plt.figure(1)
-    sum_rewards = np.zeros(cfg.episode_num)
-    for x in range(cfg.episode_num):
-        sum_rewards[x]=np.sum(rewards_this_episode[max(0,x-100):(x+1)])
-    fig, ax1 = plt.subplots()
-    x = np.arange(cfg.episode_num)
-    if len(epsilon_history) < cfg.episode_num:
-        epsilon_history = np.pad(epsilon_history, (0, cfg.episode_num - len(epsilon_history)), 'constant', constant_values=np.nan)
-
-    ax1.plot(x, sum_rewards, 'b-', label='Reward', marker='o')
-    ax1.set_xlabel('Episodes')
-    ax1.set_ylabel('Reward', color='b')
-    ax1.tick_params(axis='y', labelcolor='b')
-
-    ax2 = ax1.twinx()
-    ax2.plot(x, epsilon_history, 'r-', label='Epsilon', marker='x')
-    ax2.set_ylabel('Epsilon', color='r')
-    ax2.tick_params(axis='y', labelcolor='r')
-
-    plt.title('Reward & Epsilon')
-    fig.tight_layout() 
-
-    plt.savefig('GridNavigationEnv_dqn.png')
-
+    if len(average_rewards) < cfg.episode_num:
+        average_rewards = np.pad(average_rewards, (0, cfg.episode_num - len(average_rewards)), 'constant', constant_values=np.nan)
+    plt.plot(range(1, cfg.episode_num + 1), average_rewards, marker='.')
+    plt.xlabel('Episode')
+    plt.ylabel('Reward')
+    plt.title('Rewards of Different Agents Over Episodes')
+    plt.grid(True)
+    plt.savefig('Rewards_over_Episodes.png')
+    
     plt.figure(2)
+    plt.plot(range(1, len(epsilon_history) + 1),epsilon_history,marker='.')
+    plt.xlabel('Episode')
+    plt.ylabel('Epsilon')
+    plt.title('Epsilon Over Episodes')
+    plt.grid(True)
+    plt.savefig('Epsilon_over_Episodes.png')
+    
+
+    plt.figure(3)
 
 
-
-    # Graph to show the distance between agent and destination
-    fig1, ax1 = plt.subplots()
-    x = list(range(cfg.T))
-    for i in range(cfg.N):
-        y = info['distances'][i+1]
-        if len(y)<len(x):
-            y.extend([None] * (len(x) - len(y)))
-        ax1.plot(x,y,label=f'Agent {i+1}')
-    ax1.set_xlabel('t')
-    ax1.set_ylabel('d')
-    ax1.set_title('Distance between agent and destination')
-    ax1.legend()
-    plt.savefig('Distance.png')
-
-    # Graph to show the numbers of step
-    fig2, ax2 = plt.subplots()
-    x = []
-    y = []
-    for i in range(cfg.N):
-        x.append(f'{i+1}')
-        y.append(len(info['agents_route'][i+1]))
-    ax2.bar(x,y)
-    ax2.set_xlabel('agent ID')
-    ax2.set_ylabel('Numbers of step')
-    ax2.set_title('Numbers of agents\' step')
-    plt.savefig('Step.png')
+    
