@@ -333,7 +333,7 @@ if __name__ == "__main__":
     average_rewards = np.zeros(cfg.episode_num)
     epsilon_history = []
     for ep in range(cfg.episode_num):
-        print(f'starting episode {ep}')
+        print(f'starting episode {ep+1}')
 
         rewards_this_episode = []
         epsilon = 1
@@ -397,7 +397,7 @@ if __name__ == "__main__":
     print('*****************************************')
 
 
-    plt.figure(1)
+    plt.figure('Reward')
     if len(average_rewards) < cfg.episode_num:
         average_rewards = np.pad(average_rewards, (0, cfg.episode_num - len(average_rewards)), 'constant', constant_values=np.nan)
     plt.plot(range(1, cfg.episode_num + 1), average_rewards, marker='.')
@@ -407,16 +407,40 @@ if __name__ == "__main__":
     plt.grid(True)
     plt.savefig('Rewards_over_Episodes.png')
     
-    plt.figure(2)
-    plt.plot(range(1, len(epsilon_history) + 1),epsilon_history,marker='.')
-    plt.xlabel('Episode')
+    plt.figure('Epsilon')
+    plt.plot(range(1, len(epsilon_history) + 1), epsilon_history, marker='.')
+    plt.xlabel('Number of Epsilon')
     plt.ylabel('Epsilon')
-    plt.title('Epsilon Over Episodes')
+    plt.title('Epsilon trend')
     plt.grid(True)
     plt.savefig('Epsilon_over_Episodes.png')
     
 
-    plt.figure(3)
+    plt.figure('Distance')
+    max_len = max(len(info['distances'][i+1]) for i in range(cfg.N))
+    x = list(range(max_len))
+    for i in range(cfg.N):
+        y = info['distances'][i+1]
+        if len(y) < max_len:
+            y.extend([None] * (max_len - len(y)))
+        plt.plot(x, y, label=f'Agent {i+1}')
+    plt.xlabel('t')
+    plt.ylabel('d')
+    plt.title('Distance between agent and destination')
+    plt.legend()
+    plt.savefig('Distance.png')
 
 
-    
+    plt.figure('Steps')
+    x = []
+    y = []
+    for i in range(cfg.N):
+        x.append(f'{i+1}')
+        y.append(len(info['agents_route'][i+1]))
+    plt.bar(x, y)
+    plt.xlabel('Agent ID')
+    plt.ylabel('Number of Steps')
+    plt.title("Number of Agents' Steps")
+    plt.savefig('Step.png')
+
+    plt.show()

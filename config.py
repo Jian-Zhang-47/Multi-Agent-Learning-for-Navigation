@@ -1,13 +1,13 @@
 # Environment
 
-L = 6  # Grid size
-P = 0.1  # Number of obstacles (as a percentage to grid size)
-N = 2  # Number of agents
-T = 100  # Maximum episode length
-M = 2  # Agent FoV size
+L = 20  # Grid size
+P = 0.2  # Number of obstacles (as a percentage to grid size)
+N = 10  # Number of agents
+T = 10  # Maximum episode length
+M = 10  # Agent FoV size
 
 # RL
-episode_num = 100
+episode_num = 10
 memory_size = 1000
 batch_size = 32
 
