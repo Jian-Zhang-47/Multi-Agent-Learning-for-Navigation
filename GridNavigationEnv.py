@@ -413,7 +413,7 @@ if __name__ == "__main__":
     plt.ylabel('Epsilon')
     plt.title('Epsilon trend')
     plt.grid(True)
-    plt.savefig('Epsilon_over_Episodes.png')
+    plt.savefig('Epsilon_trend.png')
     
 
     plt.figure('Distance')
