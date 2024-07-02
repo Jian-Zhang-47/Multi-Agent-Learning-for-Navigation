@@ -279,10 +279,10 @@ class GridNavigationEnv(gym.Env):
                 distance = self.calculate_distance(self.agents[a_id - 1], self.destination)
                 self.distance_dict[a_id].append(distance)  # Record the distance in dict
                 if distance == 0:
-                    self.rewards[a_id - 1] = 1  # Reward for reaching destination
+                    self.rewards[a_id - 1] = 15*self.L  # Reward for reaching destination
                     self.agents_id_list.remove(a_id)
                 else:
-                    self.rewards[a_id - 1] = self.L/distance # Penalty for each move
+                    self.rewards[a_id - 1] = 1.5*self.L/distance # Penalty for each move
 
         self.steps += 1
         done = all(self.agents[agent_id - 1] == self.destination for agent_id in self.agents_id_list)
