@@ -1,40 +1,11 @@
-from copy import copy
-
+from copy import copy,deepcopy
 import gymnasium as gym
 from gymnasium import spaces
-from matplotlib import pyplot as plt
 import numpy as np
 import random
 import math
-from matplotlib.ticker import FuncFormatter
-
 import config as cfg
-
-from model import ReplayBuffer
-from model import D3QL
-
-
-def dict_to_arr(dict_var):
-    row = col = 2 * cfg.M + 1
-    array_3d = np.full((cfg.N, row, col), '  ', dtype=object)
-
-    for a_id, sub_dict in dict_var.items():
-        for (i, j), value in sub_dict.items():
-            array_3d[a_id - 1][i, j] = value
-
-    array_3d_num = np.vectorize(replace_element)(array_3d).astype(float)
-
-    return array_3d_num
-
-
-def replace_element(elem):
-    return cfg.replacement_dict.get(elem)
-
-
-def return_one_hot_vector(value):
-    one_hot_vector = [0 for _ in range(4)]
-    one_hot_vector[value] = 1
-    return one_hot_vector
+import utils
 
 
 class GridNavigationEnv(gym.Env):
@@ -58,7 +29,25 @@ class GridNavigationEnv(gym.Env):
         self.fov_rel = {i + 1: [] for i in range(self.N)}  # FoV of agents, agent as the origin
         self.view_angle = 90  # View angle of agent
         self.action_space = spaces.Discrete(4)  # Four possible actions: up, down, left, right
+
+        # Save the initial state
+        self.initial_state = None
+
+        # Initialize the environment
         self.init_environment()
+        self.save_initial_state()
+
+    def save_initial_state(self):
+        self.initial_state = deepcopy((self.grid, self.agents, self.agents_id_list, self.agents_route_dict, 
+                                       self.destination, self.steps, self.rewards, self.distance_dict, 
+                                       self.fov, self.fov_rel))
+
+    def restore_initial_state(self):
+        (self.grid, self.agents, self.agents_id_list, self.agents_route_dict, 
+         self.destination, self.steps, self.rewards, self.distance_dict, 
+         self.fov, self.fov_rel) = deepcopy(self.initial_state)
+
+
 
     def init_environment(self):
         self.place_obstacles()
@@ -254,21 +243,25 @@ class GridNavigationEnv(gym.Env):
         self.fov[agent_id] = (self.get_fov(self.agents[agent_id - 1], dx, dy))  # Get FoV after moving
         self.fov_rel[agent_id] = self.relative_coordinates(self.fov[agent_id], self.agents[agent_id - 1])
 
-    def reset(self, **kwargs):
-        self.grid.fill(0)
-        self.agents.clear()
-        self.agents_id_list.clear()
-        self.agents_route_dict.clear()
-        self.destination = None
-        self.steps = 0
-        self.rewards = np.zeros(self.N)
-        self.distance_dict = {i + 1: [] for i in range(self.N)}
-        self.fov = {i + 1: [] for i in range(self.N)}
-        self.init_environment()
-
-        observation = dict_to_arr(self.fov_rel)
-
+    def reset(self):
+        #self.grid.fill(0)
+        #self.agents.clear()
+        #self.agents_id_list.clear()
+        #self.agents_route_dict.clear()
+        #self.destination = None
+        #self.steps = 0
+        #self.rewards = np.zeros(self.N)
+        #self.distance_dict = {i + 1: [] for i in range(self.N)}
+        #self.fov = {i + 1: [] for i in range(self.N)}
+        #self.init_environment()
+        #observation = utils.dict_to_arr(self.fov_rel)
+        #return observation
+    
+        self.restore_initial_state()
+        observation = utils.dict_to_arr(self.fov_rel)
         return observation
+
+
 
     def step(self, actions):
         for a_id in self.agents_id_list[:]:
@@ -279,7 +272,7 @@ class GridNavigationEnv(gym.Env):
                 distance = self.calculate_distance(self.agents[a_id - 1], self.destination)
                 self.distance_dict[a_id].append(distance)  # Record the distance in dict
                 if distance == 0:
-                    self.rewards[a_id - 1] = 15*self.L  # Reward for reaching destination
+                    self.rewards[a_id - 1] = 1.5*self.L  # Reward for reaching destination
                     self.agents_id_list.remove(a_id)
                 else:
                     self.rewards[a_id - 1] = 1.5*self.L/distance # Penalty for each move
@@ -287,7 +280,7 @@ class GridNavigationEnv(gym.Env):
         self.steps += 1
         done = all(self.agents[agent_id - 1] == self.destination for agent_id in self.agents_id_list)
         terminate = self.steps >= self.T
-        observation = dict_to_arr(self.fov_rel)
+        observation = utils.dict_to_arr(self.fov_rel)
         rewards = self.rewards
         info = {}
         info['grid_map'] = self.grid
@@ -316,131 +309,29 @@ class GridNavigationEnv(gym.Env):
 
 if __name__ == "__main__":
     env = GridNavigationEnv(L=cfg.L, P=cfg.P, N=cfg.N, T=cfg.T, M=cfg.M)
+    env.init_environment()
     observation = env.reset()
     done = False
     terminate = False
     print(f'In 0 step')
     env.render()
-    # env.render_fov(env.fov_rel)
-    print(dict_to_arr(env.fov_rel))
+    #env.render_fov(env.fov_rel)
+    print(utils.dict_to_arr(env.fov_rel))
     print()
 
-    dimension = (2 * cfg.M) + 1
-    buffer = ReplayBuffer(cfg.memory_size, cfg.N, dimension)
-    d3ql_algorithm = D3QL(cfg.N, dimension)
-
-    is_successful = np.zeros(cfg.episode_num)
-    average_rewards = np.zeros(cfg.episode_num)
-    epsilon_history = []
-    for ep in range(cfg.episode_num):
-        print(f'starting episode {ep+1}')
-
-        rewards_this_episode = []
-        epsilon = 1
-        epsilon_decay = 0.99
-        epsilon_min = 0.05
-
-        while not done and not terminate:
-            old_observation = copy(observation)
-
-            # epsilon-greedy algorithm
-            if np.random.random() < epsilon:
-                actions = np.array([env.action_space.sample() for _ in range(env.N)])  # Random actions
-            else:
-                actions = np.array([d3ql_algorithm.get_model_output(observation[i, :, :].flatten(), i)
-                          for i in range(env.N)])  # Intelligent actions
-
-            observation, rewards, terminate, info, done = env.step(actions)
-            rewards_this_episode.append(rewards.mean())
-            print(f'done is {done}')
-            print(f"In {info['steps_number']} steps")
-            
-            #env.render()
-            print('')
-            #env.render_fov(env.fov_rel)
-            #print(env.fov_rel)
-            #print(observation)
-            #print('')
-
-
-            actions_encoded = np.array([return_one_hot_vector(a) for a in actions])
-            buffer.store_experience(old_observation.reshape(cfg.N, -1),
-                                    observation.reshape(cfg.N, -1),
-                                    actions_encoded, rewards, done or terminate)
-
-            # update epsilon
-            epsilon *= epsilon_decay
-            epsilon = max(epsilon, epsilon_min)
-            epsilon_history.append(epsilon)
-
-            # train models independently
-            if buffer.mem_counter > cfg.batch_size:
-                state, next_state, action, reward, dones = buffer.sample_buffer()
-                d3ql_algorithm.train_independent(state, next_state, action, reward, dones)
-
-            print(f"Destination: {info['destination']}")
-            print(f"Reward: {rewards}")
-            print(f"All agents have reached the destination: {done}")
-            print(f"Some agents are stuck somewhere: {terminate}")
-            #print(f"Route: {info['agents_route']}\n")
-        done = False
-        terminate = False
-
-        is_successful[ep] = done
-        average_rewards[ep] = np.array(rewards_this_episode).mean() if len(rewards_this_episode) > 0 else 0
-        print(f'rewards_this_episode:{rewards_this_episode}')
-        print(f'average_rewards:{average_rewards}')
-
-    print('*****************************************')
-    print(f'Success rate for {cfg.episode_num} episodes was {is_successful.mean() * 100}%')
-    print(f'Average reward for {cfg.episode_num} episodes was {round(average_rewards.mean(), 3)}')
-    print('*****************************************')
-
-
-    plt.figure('Reward')
-    if len(average_rewards) < cfg.episode_num:
-        average_rewards = np.pad(average_rewards, (0, cfg.episode_num - len(average_rewards)), 'constant', constant_values=np.nan)
-    plt.plot(range(1, cfg.episode_num + 1), average_rewards, marker='.')
-    plt.xlabel('Episode')
-    plt.ylabel('Reward')
-    plt.title('Rewards of Different Agents Over Episodes')
-    plt.grid(True)
-    plt.savefig('Rewards_over_Episodes.png')
-    
-    plt.figure('Epsilon')
-    plt.plot(range(1, len(epsilon_history) + 1), epsilon_history, marker='.')
-    plt.xlabel('Number of Epsilon')
-    plt.ylabel('Epsilon')
-    plt.title('Epsilon trend')
-    plt.grid(True)
-    plt.savefig('Epsilon_trend.png')
-    
-
-    plt.figure('Distance')
-    max_len = max(len(info['distances'][i+1]) for i in range(cfg.N))
-    x = list(range(max_len))
-    for i in range(cfg.N):
-        y = info['distances'][i+1]
-        if len(y) < max_len:
-            y.extend([None] * (max_len - len(y)))
-        plt.plot(x, y, label=f'Agent {i+1}')
-    plt.xlabel('t')
-    plt.ylabel('d')
-    plt.title('Distance between agent and destination')
-    plt.legend()
-    plt.savefig('Distance.png')
-
-
-    plt.figure('Steps')
-    x = []
-    y = []
-    for i in range(cfg.N):
-        x.append(f'{i+1}')
-        y.append(len(info['agents_route'][i+1]))
-    plt.bar(x, y)
-    plt.xlabel('Agent ID')
-    plt.ylabel('Number of Steps')
-    plt.title("Number of Agents' Steps")
-    plt.savefig('Step.png')
-
-    plt.show()
+    while not done and not terminate:
+        actions = [env.action_space.sample() for _ in range(env.N)]  # Random actions
+        observation, rewards, terminate, info, done = env.step(actions)
+        print(f'In {info['steps_number']} steps')
+        print(f"Reward: {rewards}")
+        env.render()
+        print('')
+        env.render_fov(env.fov_rel)
+        print(env.fov_rel)
+        print(observation)
+        print('')
+    print(f"Destination: {info['destination']}")
+    print(f"Reward: {rewards}")
+    print(f"All agents have reached the destination: {done}")
+    print(f"Some agents are stuck somewhere: {terminate}")
+    print(f"Route: {info['agents_route']}\n")
