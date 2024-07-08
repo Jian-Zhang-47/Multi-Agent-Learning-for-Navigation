@@ -1,2 +1,2 @@
-Success rate for 1000 episodes was 68.8%
-Average reward for 1000 episodes was 13.502
+Success rate for 1000 episodes was 72.2%
+Average reward for 1000 episodes was 14.882

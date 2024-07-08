@@ -99,10 +99,8 @@ for ep in range(cfg.episode_num):
 
 
 print('*****************************************')
-print(f'Success rate for {cfg.episode_num} episodes was {
-      is_successful.mean() * 100}%')
-print(f'Average reward for {cfg.episode_num} episodes was {
-      round(average_rewards.mean(), 3)}')
+print(f'Success rate for {cfg.episode_num} episodes was {is_successful.mean() * 100}%')
+print(f'Average reward for {cfg.episode_num} episodes was {round(average_rewards.mean(), 3)}')
 print('*****************************************')
 
 
@@ -111,10 +109,8 @@ if not os.path.exists(output_folder):
     os.makedirs(output_folder)
 print_file_path = os.path.join(output_folder, 'results.txt')
 with open(print_file_path, 'w') as f:
-    f.write(f'Success rate for {cfg.episode_num} episodes was {
-            is_successful.mean() * 100}%\n')
-    f.write(f'Average reward for {cfg.episode_num} episodes was {
-            round(average_rewards.mean(), 3)}')
+    f.write(f'Success rate for {cfg.episode_num} episodes was {is_successful.mean() * 100}%\n')
+    f.write(f'Average reward for {cfg.episode_num} episodes was {round(average_rewards.mean(), 3)}')
 
 
 plt.figure('Reward')
