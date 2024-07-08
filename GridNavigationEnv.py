@@ -1,4 +1,4 @@
-from copy import copy,deepcopy
+from copy import copy, deepcopy
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
@@ -24,11 +24,14 @@ class GridNavigationEnv(gym.Env):
         self.destination = None
         self.steps = 0  # Number of steps
         self.rewards = np.zeros(self.N)  # Rewards of agents
-        self.distance_dict = {i + 1: [] for i in range(self.N)}  # Distance between agents and destination
+        # Distance between agents and destination
+        self.distance_dict = {i + 1: [] for i in range(self.N)}
         self.fov = {i + 1: [] for i in range(self.N)}  # FoV of agents
-        self.fov_rel = {i + 1: [] for i in range(self.N)}  # FoV of agents, agent as the origin
-        self.view_angle = 90  # View angle of agent
-        self.action_space = spaces.Discrete(4)  # Four possible actions: up, down, left, right
+        # FoV of agents, agent as the origin
+        self.fov_rel = {i + 1: [] for i in range(self.N)}
+        self.view_angle = 360  # View angle of agent
+        # Four possible actions: up, down, left, right
+        self.action_space = spaces.Discrete(4)
 
         # Save the initial state
         self.initial_state = None
@@ -38,16 +41,14 @@ class GridNavigationEnv(gym.Env):
         self.save_initial_state()
 
     def save_initial_state(self):
-        self.initial_state = deepcopy((self.grid, self.agents, self.agents_id_list, self.agents_route_dict, 
-                                       self.destination, self.steps, self.rewards, self.distance_dict, 
+        self.initial_state = deepcopy((self.grid, self.agents, self.agents_id_list, self.agents_route_dict,
+                                       self.destination, self.steps, self.rewards, self.distance_dict,
                                        self.fov, self.fov_rel))
 
     def restore_initial_state(self):
-        (self.grid, self.agents, self.agents_id_list, self.agents_route_dict, 
-         self.destination, self.steps, self.rewards, self.distance_dict, 
+        (self.grid, self.agents, self.agents_id_list, self.agents_route_dict,
+         self.destination, self.steps, self.rewards, self.distance_dict,
          self.fov, self.fov_rel) = deepcopy(self.initial_state)
-
-
 
     def init_environment(self):
         self.place_obstacles()
@@ -57,7 +58,8 @@ class GridNavigationEnv(gym.Env):
     def place_obstacles(self):
         for _ in range(self.obstacles):
             while True:
-                x, y = random.randint(0, self.L - 1), random.randint(0, self.L - 1)
+                x, y = random.randint(
+                    0, self.L - 1), random.randint(0, self.L - 1)
                 if self.grid[x, y] == 0:
                     self.grid[x, y] = -1  # Obstacle grid value is -1
                     break
@@ -72,17 +74,23 @@ class GridNavigationEnv(gym.Env):
     def place_agents(self):
         for i in range(self.N):
             while True:
-                x, y = random.randint(0, self.L - 1), random.randint(0, self.L - 1)
+                x, y = random.randint(
+                    0, self.L - 1), random.randint(0, self.L - 1)
                 if self.grid[x, y] == 0:
                     self.agents_id_list.append(i + 1)  # Agent ID
                     self.grid[x, y] = self.agents_id_list[i]
                     self.agents.append((x, y))
-                    self.agents_route_dict[self.agents_id_list[i]] = [self.agents[i]]  # Record the original position of agents
+                    self.agents_route_dict[self.agents_id_list[i]] = [
+                        # Record the original position of agents
+                        self.agents[i]]
                     break
-            self.fov[i + 1] = (self.get_fov(self.agents[i], -1, 0))  # Get FoV at step 0. The default view is up.
-            self.fov_rel[i + 1] = self.relative_coordinates(self.fov[i + 1], self.agents[i])
+            # Get FoV at step 0. The default view is up.
+            self.fov[i + 1] = (self.get_fov(self.agents[i], -1, 0))
+            self.fov_rel[i +
+                         1] = self.relative_coordinates(self.fov[i + 1], self.agents[i])
 
-    def relative_coordinates(self, original_dict, agent_pos):  # Set the top left grid of FoV as the origin
+    # Set the top left grid of FoV as the origin
+    def relative_coordinates(self, original_dict, agent_pos):
         return {(k[0] - agent_pos[0] + self.M, k[1] - agent_pos[1] + self.M): v for k, v in original_dict.items()}
 
     def calculate_gradient(self, point1, point2):
@@ -103,15 +111,19 @@ class GridNavigationEnv(gym.Env):
             for j in range(-self.M, self.M + 1):
                 xi, yj = x + i, y + j
                 ij_pos = (xi, yj)
-                d = self.calculate_distance(agent_pos, ij_pos)  # Distance between grid and agent
+                # Distance between grid and agent
+                d = self.calculate_distance(agent_pos, ij_pos)
                 if 0 <= xi < self.L and 0 <= yj < self.L and d <= self.M:
                     fov_circle.append(ij_pos)
 
         if self.view_angle < 180:
-            g1 = round(-1 / math.tan(math.radians(self.view_angle / 2)), 4)  # Gradient of the 1st view field boundary
-            g2 = round(1 / math.tan(math.radians(self.view_angle / 2)), 4)  # Gradient of the 2nd view field boundary
+            # Gradient of the 1st view field boundary
+            g1 = round(-1 / math.tan(math.radians(self.view_angle / 2)), 4)
+            # Gradient of the 2nd view field boundary
+            g2 = round(1 / math.tan(math.radians(self.view_angle / 2)), 4)
             for p in fov_circle:
-                g_p = self.calculate_gradient(agent_pos, p)  # Gradient of the line between grid and agent
+                # Gradient of the line between grid and agent
+                g_p = self.calculate_gradient(agent_pos, p)
                 if dx == -1 and dy == 0:  # Move to up
                     if g1 <= g_p <= g2 and p[0] <= x:
                         fov.append(p)
@@ -124,11 +136,12 @@ class GridNavigationEnv(gym.Env):
                 elif dx == 0 and dy == 1:  # Move to right
                     if (g_p <= g1 or g_p >= g2 or g_p == float('inf')) and p[1] >= y:
                         fov.append(p)
-        elif self.view_angle >= 180:
+        elif 180 <= self.view_angle < 360:
             g1 = -1 / math.tan(math.radians((360 - self.view_angle) / 2))
             g2 = 1 / math.tan(math.radians((360 - self.view_angle) / 2))
             for p in fov_circle:
-                g_p = self.calculate_gradient(agent_pos, p)  # Gradient of the line between grid and agent
+                # Gradient of the line between grid and agent
+                g_p = self.calculate_gradient(agent_pos, p)
                 if dx == -1 and dy == 0:  # Move to up
                     if p[0] <= x:
                         fov.append(p)
@@ -149,6 +162,10 @@ class GridNavigationEnv(gym.Env):
                         fov.append(p)
                     elif p[1] < y and (g1 <= g_p <= g2):
                         fov.append(p)
+
+        elif self.view_angle == 360:
+            fov = fov_circle
+            
         if agent_pos not in fov:
             fov.append(agent_pos)
 
@@ -166,8 +183,10 @@ class GridNavigationEnv(gym.Env):
         g2 = self.calculate_gradient(agent_pos, corner2)
         for p in fov:
             g = self.calculate_gradient(p, agent_pos)
-            d_ap = self.calculate_distance(p, agent_pos)  # The distance between agent and p
-            d_op = self.calculate_distance(p, obs)  # The distance between p and obs
+            # The distance between agent and p
+            d_ap = self.calculate_distance(p, agent_pos)
+            # The distance between p and obs
+            d_op = self.calculate_distance(p, obs)
             if min(g1, g2) < g < max(g1, g2) and d_ap > d_ao and d_ap > d_op:
                 state_map[p] = 'S0'
 
@@ -184,47 +203,56 @@ class GridNavigationEnv(gym.Env):
     def blocked_fov_by_obstacle(self, agent_pos, obs, fov, state_map):
         xb, yb = obs
         x, y = agent_pos
-        d_ao = self.calculate_distance(agent_pos, obs)  # The distance between agent and obs
+        # The distance between agent and obs
+        d_ao = self.calculate_distance(agent_pos, obs)
 
         if xb < x and yb < y:  # The obstacle is on the 'Up Left' of the agent.
             corner1 = (xb + 0.5, yb - 0.5)
             corner2 = (xb - 0.5, yb + 0.5)
-            self.update_S0(corner1, corner2, agent_pos, d_ao, obs, fov, state_map)
+            self.update_S0(corner1, corner2, agent_pos,
+                           d_ao, obs, fov, state_map)
 
         elif xb < x and yb > y:  # ...Up Right...
             corner1 = (xb + 0.5, yb + 0.5)
             corner2 = (xb - 0.5, yb - 0.5)
-            self.update_S0(corner1, corner2, agent_pos, d_ao, obs, fov, state_map)
+            self.update_S0(corner1, corner2, agent_pos,
+                           d_ao, obs, fov, state_map)
 
         elif xb > x and yb < y:  # ...Down Left...
             corner1 = (xb + 0.5, yb + 0.5)
             corner2 = (xb - 0.5, yb - 0.5)
-            self.update_S0(corner1, corner2, agent_pos, d_ao, obs, fov, state_map)
+            self.update_S0(corner1, corner2, agent_pos,
+                           d_ao, obs, fov, state_map)
 
         elif xb > x and yb > y:  # ...Down Right...
             corner1 = (xb + 0.5, yb - 0.5)
             corner2 = (xb - 0.5, yb + 0.5)
-            self.update_S0(corner1, corner2, agent_pos, d_ao, obs, fov, state_map)
+            self.update_S0(corner1, corner2, agent_pos,
+                           d_ao, obs, fov, state_map)
 
         elif xb == x and yb < y:  # ...Left...
             corner1 = (xb + 0.5, yb + 0.5)
             corner2 = (xb - 0.5, yb + 0.5)
-            self.update_S0_inf(corner1, corner2, agent_pos, d_ao, obs, fov, state_map)
+            self.update_S0_inf(corner1, corner2, agent_pos,
+                               d_ao, obs, fov, state_map)
 
         elif xb == x and yb > y:  # ...Right...
             corner1 = (xb + 0.5, yb - 0.5)
             corner2 = (xb - 0.5, yb - 0.5)
-            self.update_S0_inf(corner1, corner2, agent_pos, d_ao, obs, fov, state_map)
+            self.update_S0_inf(corner1, corner2, agent_pos,
+                               d_ao, obs, fov, state_map)
 
         elif xb < x and yb == y:  # ...Up...
             corner1 = (xb + 0.5, yb - 0.5)
             corner2 = (xb + 0.5, yb + 0.5)
-            self.update_S0(corner1, corner2, agent_pos, d_ao, obs, fov, state_map)
+            self.update_S0(corner1, corner2, agent_pos,
+                           d_ao, obs, fov, state_map)
 
         elif xb > x and yb == y:  # ...Down...
             corner1 = (xb - 0.5, yb + 0.5)
             corner2 = (xb - 0.5, yb - 0.5)
-            self.update_S0(corner1, corner2, agent_pos, d_ao, obs, fov, state_map)
+            self.update_S0(corner1, corner2, agent_pos,
+                           d_ao, obs, fov, state_map)
 
     def move_agent(self, agent_id, action):
         x, y = self.agents[agent_id - 1]
@@ -237,31 +265,32 @@ class GridNavigationEnv(gym.Env):
             self.grid[x, y] = 0
             self.grid[nx, ny] = agent_id
             self.agents[agent_id - 1] = (nx, ny)
-            self.agents_route_dict[agent_id].append(self.agents[agent_id - 1])  # Record the new position of agents
+            self.agents_route_dict[agent_id].append(
+                self.agents[agent_id - 1])  # Record the new position of agents
         else:
             self.agents_route_dict[agent_id].append((x, y))
-        self.fov[agent_id] = (self.get_fov(self.agents[agent_id - 1], dx, dy))  # Get FoV after moving
-        self.fov_rel[agent_id] = self.relative_coordinates(self.fov[agent_id], self.agents[agent_id - 1])
+        # Get FoV after moving
+        self.fov[agent_id] = (self.get_fov(self.agents[agent_id - 1], dx, dy))
+        self.fov_rel[agent_id] = self.relative_coordinates(
+            self.fov[agent_id], self.agents[agent_id - 1])
 
     def reset(self):
-        #self.grid.fill(0)
-        #self.agents.clear()
-        #self.agents_id_list.clear()
-        #self.agents_route_dict.clear()
-        #self.destination = None
-        #self.steps = 0
-        #self.rewards = np.zeros(self.N)
-        #self.distance_dict = {i + 1: [] for i in range(self.N)}
-        #self.fov = {i + 1: [] for i in range(self.N)}
-        #self.init_environment()
-        #observation = utils.dict_to_arr(self.fov_rel)
-        #return observation
-    
+        # self.grid.fill(0)
+        # self.agents.clear()
+        # self.agents_id_list.clear()
+        # self.agents_route_dict.clear()
+        # self.destination = None
+        # self.steps = 0
+        # self.rewards = np.zeros(self.N)
+        # self.distance_dict = {i + 1: [] for i in range(self.N)}
+        # self.fov = {i + 1: [] for i in range(self.N)}
+        # self.init_environment()
+        # observation = utils.dict_to_arr(self.fov_rel)
+        # return observation
+
         self.restore_initial_state()
         observation = utils.dict_to_arr(self.fov_rel)
         return observation
-
-
 
     def step(self, actions):
         for a_id in self.agents_id_list[:]:
@@ -269,16 +298,21 @@ class GridNavigationEnv(gym.Env):
                 self.agents_id_list.remove(a_id)
             else:
                 self.move_agent(a_id, actions[a_id - 1])
-                distance = self.calculate_distance(self.agents[a_id - 1], self.destination)
-                self.distance_dict[a_id].append(distance)  # Record the distance in dict
+                distance = self.calculate_distance(
+                    self.agents[a_id - 1], self.destination)
+                # Record the distance in dict
+                self.distance_dict[a_id].append(distance)
                 if distance == 0:
-                    self.rewards[a_id - 1] = 1.5*self.L  # Reward for reaching destination
+                    # Reward for reaching destination
+                    self.rewards[a_id - 1] = 1.5*self.L
                     self.agents_id_list.remove(a_id)
                 else:
-                    self.rewards[a_id - 1] = 1.5*self.L/distance # Penalty for each move
+                    self.rewards[a_id - 1] = 1.5*self.L / \
+                        distance  # Penalty for each move
 
         self.steps += 1
-        done = all(self.agents[agent_id - 1] == self.destination for agent_id in self.agents_id_list)
+        done = all(self.agents[agent_id - 1] ==
+                   self.destination for agent_id in self.agents_id_list)
         terminate = self.steps >= self.T
         observation = utils.dict_to_arr(self.fov_rel)
         rewards = self.rewards
@@ -299,7 +333,8 @@ class GridNavigationEnv(gym.Env):
             if not coordinates:
                 print(f"Fov map for Agent {key} is empty.")
                 continue
-            FoV_map = [['  ' for _ in range(0, 2 * self.M + 1)] for _ in range(0, 2 * self.M + 1)]
+            FoV_map = [['  ' for _ in range(0, 2 * self.M + 1)]
+                       for _ in range(0, 2 * self.M + 1)]
             for (x, y), state in coordinates.items():
                 FoV_map[x][y] = state
             print(f"Fov map for Agent {key}:")
@@ -315,12 +350,13 @@ if __name__ == "__main__":
     terminate = False
     print(f'In 0 step')
     env.render()
-    #env.render_fov(env.fov_rel)
+    # env.render_fov(env.fov_rel)
     print(utils.dict_to_arr(env.fov_rel))
     print()
 
     while not done and not terminate:
-        actions = [env.action_space.sample() for _ in range(env.N)]  # Random actions
+        actions = [env.action_space.sample()
+                   for _ in range(env.N)]  # Random actions
         observation, rewards, terminate, info, done = env.step(actions)
         print(f'In {info['steps_number']} steps')
         print(f"Reward: {rewards}")

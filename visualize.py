@@ -3,6 +3,8 @@ from matplotlib import animation
 from copy import copy
 from GridNavigationEnv import GridNavigationEnv
 import matplotlib.pyplot as plt
+import config as cfg
+import numpy as np
 
 
 # Parameters

@@ -1,10 +1,10 @@
 # Environment
 
-L = 5  # Grid size
+L = 10  # Grid size
 P = 0.1  # Number of obstacles (as a percentage to grid size)
-N = 2  # Number of agents
-T = 50  # Maximum episode length
-M = 3  # Agent FoV size
+N = 1  # Number of agents
+T = 100  # Maximum episode length
+M = 10  # Agent FoV size
 
 # RL
 episode_num = 1000
@@ -17,6 +17,9 @@ learning_hyperparameters = {
     'num_actions': 4,
     'gamma': 0.9,
     'replace_target_interval': 50,
+    'epsilon': 1,
+    'epsilon_decay': 0.99,
+    'epsilon_min': 0.05
 
 }
 
