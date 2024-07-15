@@ -10,12 +10,11 @@ import os
 import csv
 import torch
 
-
 env = GridNavigationEnv(L=cfg.L, P=cfg.P, N=cfg.N, T=cfg.T, M=cfg.M)
 observation = env.reset()
 
 fov_size = (2 * cfg.M) + 1
-dimension = (3,fov_size,fov_size)
+dimension = (3, fov_size, fov_size)
 buffer = ReplayBuffer(cfg.memory_size, cfg.N, dimension)
 d3ql_algorithm = D3QL(cfg.N, dimension)
 
@@ -36,7 +35,6 @@ agents_route_H = []
 loss_H = []
 step_distances = []
 
-
 for ep in range(cfg.episode_num):
     done = False
     terminate = False
@@ -44,9 +42,8 @@ for ep in range(cfg.episode_num):
     ob_expanded = np.expand_dims(ob, axis=1)
     observation = np.repeat(ob_expanded, 3, axis=1)
     print(f"observation shape: {observation.shape}")
-    print(f'starting episode {ep+1}')
+    print(f'starting episode {ep + 1}')
     rewards_this_episode = []
-    
 
     while not done and not terminate:
         old_observation = copy(observation)
@@ -54,7 +51,7 @@ for ep in range(cfg.episode_num):
         # epsilon-greedy algorithm
         if np.random.random() < epsilon:
             actions = np.array([env.action_space.sample()
-                               for _ in range(env.N)])  # Random actions
+                                for _ in range(env.N)])  # Random actions
         else:
             actions = np.array([d3ql_algorithm.get_model_output(observation[i, :, :].reshape(1, *dimension), i)
                                 for i in range(env.N)])  # Intelligent actions
@@ -69,11 +66,12 @@ for ep in range(cfg.episode_num):
         buffer.store_experience(old_observation,
                                 observation,
                                 actions_encoded, rewards, done or terminate)
-        
+
         # Collecting observation, action for CSV logging
         for i in range(cfg.N):
-            observations_H.append({'No.': len(observations_H),'episode_num': ep, 'agent ID':i+1,'observation': old_observation[i].tolist()})
-            actions_H.append({'No.': len(actions_H), 'episode_num': ep, 'agent ID':i+1, 'action': actions[i]})
+            observations_H.append({'No.': len(observations_H), 'episode_num': ep, 'agent ID': i + 1,
+                                   'observation': old_observation[i].tolist()})
+            actions_H.append({'No.': len(actions_H), 'episode_num': ep, 'agent ID': i + 1, 'action': actions[i]})
 
         # update epsilon
         epsilon *= epsilon_decay
@@ -89,12 +87,11 @@ for ep in range(cfg.episode_num):
 
         # Record distance for each step
         step_distances.append(info['distances'])
-    
 
     # Collecting route for CSV logging     
     for i in range(cfg.N):
-        agents_route_H.append({'No.': len(agents_route_H),'episode_num': ep, 'agent ID':i+1, 'route': info['agents_route'][i+1]})
-
+        agents_route_H.append(
+            {'No.': len(agents_route_H), 'episode_num': ep, 'agent ID': i + 1, 'route': info['agents_route'][i + 1]})
 
     is_successful[ep] = done
     average_rewards[ep] = np.array(rewards_this_episode).mean() if len(
@@ -103,7 +100,6 @@ for ep in range(cfg.episode_num):
         value for sublist in info['distances'].values() for value in sublist]
     distance_episodes[ep] = sum(distance_all_value) / len(distance_all_value)
     rate_distance_over_step[ep] = distance_episodes[ep] / info['steps_number']
-
 
 print('*****************************************')
 print(f'Success rate for {cfg.episode_num} episodes was {is_successful.mean() * 100}%')
@@ -120,11 +116,10 @@ with open(print_file_path, 'w') as f:
     f.write(f'Success rate for {cfg.episode_num} episodes was {is_successful.mean() * 100}%\n')
     f.write(f'Average reward for {cfg.episode_num} episodes was {round(average_rewards.mean(), 3)}')
 
-
 plt.figure('Reward')
 if len(average_rewards) < cfg.episode_num:
     average_rewards = np.pad(average_rewards, (0, cfg.episode_num -
-                             len(average_rewards)), 'constant', constant_values=np.nan)
+                                               len(average_rewards)), 'constant', constant_values=np.nan)
 plt.plot(range(1, cfg.episode_num + 1), average_rewards, marker='.')
 plt.xlabel('Episode')
 plt.ylabel('Reward')
@@ -135,7 +130,7 @@ plt.savefig(os.path.join(output_folder, 'Rewards_over_Episodes.png'))
 plt.figure('Distance')
 if len(average_rewards) < cfg.episode_num:
     average_rewards = np.pad(average_rewards, (0, cfg.episode_num -
-                             len(average_rewards)), 'constant', constant_values=np.nan)
+                                               len(average_rewards)), 'constant', constant_values=np.nan)
 plt.plot(range(1, cfg.episode_num + 1), distance_episodes, marker='.')
 plt.xlabel('Episode')
 plt.ylabel('Distance')
@@ -173,6 +168,7 @@ plt.savefig(os.path.join(output_folder, 'Loss.png'))
 # Save step distances as .npy file
 np.save(os.path.join(output_folder, 'distances.npy'), step_distances)
 
+
 def save_to_csv(filename, data, fieldnames):
     with open(filename, 'w', newline='') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -180,11 +176,11 @@ def save_to_csv(filename, data, fieldnames):
         for row in data:
             writer.writerow(row)
 
+
 observation_fieldnames = ['No.', 'episode_num', 'agent ID', 'observation']
 action_fieldnames = ['No.', 'episode_num', 'agent ID', 'action']
 route_fieldnames = ['No.', 'episode_num', 'agent ID', 'route']
 
-save_to_csv(os.path.join(output_folder,'observations.csv'), observations_H, observation_fieldnames)
-save_to_csv(os.path.join(output_folder,'actions.csv'), actions_H, action_fieldnames)
-save_to_csv(os.path.join(output_folder,'agents_route.csv'), agents_route_H, route_fieldnames)
-
+save_to_csv(os.path.join(output_folder, 'observations.csv'), observations_H, observation_fieldnames)
+save_to_csv(os.path.join(output_folder, 'actions.csv'), actions_H, action_fieldnames)
+save_to_csv(os.path.join(output_folder, 'agents_route.csv'), agents_route_H, route_fieldnames)
