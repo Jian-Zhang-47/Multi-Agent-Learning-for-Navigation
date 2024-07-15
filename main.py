@@ -10,7 +10,7 @@ import os
 import csv
 import torch
 
-env = GridNavigationEnv(L=cfg.L, P=cfg.P, N=cfg.N, T=cfg.T, M=cfg.M)
+env = GridNavigationEnv()
 observation = env.reset()
 
 fov_size = (2 * cfg.M) + 1
@@ -49,7 +49,7 @@ for ep in range(cfg.episode_num):
         old_observation = copy(observation)
 
         # epsilon-greedy algorithm
-        if np.random.random() < epsilon:
+        if (np.random.random() < epsilon) or (cfg.algorithm == 'random'):
             actions = np.array([env.action_space.sample()
                                 for _ in range(env.N)])  # Random actions
         else:
@@ -81,9 +81,11 @@ for ep in range(cfg.episode_num):
         # train models independently
         if buffer.mem_counter > cfg.batch_size:
             state, next_state, action, reward, dones = buffer.sample_buffer()
-            loss = d3ql_algorithm.train_independent(
-                state, next_state, action, reward, dones)
-            loss_H.append(loss)
+
+            if cfg.algorithm != 'random':
+                loss = d3ql_algorithm.train_independent(
+                    state, next_state, action, reward, dones)
+                loss_H.append(loss)
 
         # Record distance for each step
         step_distances.append(info['distances'])
