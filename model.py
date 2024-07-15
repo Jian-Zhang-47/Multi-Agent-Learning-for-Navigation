@@ -26,10 +26,10 @@ class ReplayBuffer(ABC):
         self.device = 'cuda' if th.cuda.is_available() else 'cpu'
 
         self.state_memory = np.zeros(
-            (self.capacity, *self.dimension),
+            (self.capacity,self.num_agents, *self.dimension),
             dtype=np.float32)
         self.next_state_memory = np.zeros(
-            (self.capacity, *self.dimension),
+            (self.capacity, self.num_agents, *self.dimension),
             dtype=np.float32)
         self.action_memory = np.zeros((self.capacity, self.num_agents, self.num_actions), dtype=np.int64)
         self.reward_memory = np.zeros((self.capacity, self.num_agents), dtype=np.float32)

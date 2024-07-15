@@ -41,8 +41,8 @@ for ep in range(cfg.episode_num):
     done = False
     terminate = False
     ob = env.reset()
-    ob_expanded = np.expand_dims(ob, axis=0)
-    observation = np.repeat(ob_expanded, 3, axis=0)
+    ob_expanded = np.expand_dims(ob, axis=1)
+    observation = np.repeat(ob_expanded, 3, axis=1)
     print(f"observation shape: {observation.shape}")
     print(f'starting episode {ep+1}')
     rewards_this_episode = []
@@ -59,7 +59,9 @@ for ep in range(cfg.episode_num):
             actions = np.array([d3ql_algorithm.get_model_output(observation[i, :, :].reshape(1, *dimension), i)
                                 for i in range(env.N)])  # Intelligent actions
 
-        observation, rewards, terminate, info, done = env.step(actions)
+        ob, rewards, terminate, info, done = env.step(actions)
+        ob_expanded = np.expand_dims(ob, axis=1)
+        observation = np.repeat(ob_expanded, 3, axis=1)
         rewards_this_episode.append(rewards.mean())
 
         actions_encoded = np.array(
