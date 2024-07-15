@@ -8,12 +8,14 @@ from copy import copy
 import utils
 import os
 import csv
+import torch
 
 
 env = GridNavigationEnv(L=cfg.L, P=cfg.P, N=cfg.N, T=cfg.T, M=cfg.M)
 observation = env.reset()
 
-dimension = (2 * cfg.M) + 1
+fov_size = (2 * cfg.M) + 1
+dimension = (3,fov_size,fov_size)
 buffer = ReplayBuffer(cfg.memory_size, cfg.N, dimension)
 d3ql_algorithm = D3QL(cfg.N, dimension)
 
@@ -38,7 +40,10 @@ step_distances = []
 for ep in range(cfg.episode_num):
     done = False
     terminate = False
-    observation = env.reset()
+    ob = env.reset()
+    ob_expanded = np.expand_dims(ob, axis=0)
+    observation = np.repeat(ob_expanded, 3, axis=0)
+    print(f"observation shape: {observation.shape}")
     print(f'starting episode {ep+1}')
     rewards_this_episode = []
     
@@ -51,7 +56,7 @@ for ep in range(cfg.episode_num):
             actions = np.array([env.action_space.sample()
                                for _ in range(env.N)])  # Random actions
         else:
-            actions = np.array([d3ql_algorithm.get_model_output(observation[i, :, :].flatten(), i)
+            actions = np.array([d3ql_algorithm.get_model_output(observation[i, :, :].reshape(1, *dimension), i)
                                 for i in range(env.N)])  # Intelligent actions
 
         observation, rewards, terminate, info, done = env.step(actions)
@@ -59,8 +64,8 @@ for ep in range(cfg.episode_num):
 
         actions_encoded = np.array(
             [utils.return_one_hot_vector(a) for a in actions])
-        buffer.store_experience(old_observation.reshape(cfg.N, -1),
-                                observation.reshape(cfg.N, -1),
+        buffer.store_experience(old_observation,
+                                observation,
                                 actions_encoded, rewards, done or terminate)
         
         # Collecting observation, action for CSV logging
@@ -103,6 +108,7 @@ print(f'Success rate for {cfg.episode_num} episodes was {is_successful.mean() * 
 print(f'Average reward for {cfg.episode_num} episodes was {round(average_rewards.mean(), 3)}')
 print('*****************************************')
 
+d3ql_algorithm.save_models()
 
 output_folder = 'output_results'
 if not os.path.exists(output_folder):

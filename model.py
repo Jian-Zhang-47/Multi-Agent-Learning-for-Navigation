@@ -2,9 +2,10 @@ from abc import ABC
 
 import numpy as np
 import torch as th
+import torch.nn.functional as F
 import torch.nn as nn
 import torch.optim as optim
-
+import os
 import config as cfg
 
 th.cuda.empty_cache()
@@ -25,10 +26,10 @@ class ReplayBuffer(ABC):
         self.device = 'cuda' if th.cuda.is_available() else 'cpu'
 
         self.state_memory = np.zeros(
-            (self.capacity, self.num_agents, self.dimension * self.dimension),
+            (self.capacity, *self.dimension),
             dtype=np.float32)
         self.next_state_memory = np.zeros(
-            (self.capacity, self.num_agents, self.dimension * self.dimension),
+            (self.capacity, *self.dimension),
             dtype=np.float32)
         self.action_memory = np.zeros((self.capacity, self.num_agents, self.num_actions), dtype=np.int64)
         self.reward_memory = np.zeros((self.capacity, self.num_agents), dtype=np.float32)
@@ -83,55 +84,58 @@ class ReplayBuffer(ABC):
 
 # noinspection PyUnresolvedReferences
 class DeepQNetwork(nn.Module):
-    # Reference: https://github.com/mshokrnezhad/Dueling_for_DRL
-
-    def __init__(self, num_agents, dimension):
-        nn.Module.__init__(self)
-
-        self.num_agents = num_agents
-        self.dimension = dimension
-        self.fc_sizes = cfg.learning_hyperparameters['fc_sizes']
+    def __init__(self, name, input_dims):
+        super(DeepQNetwork, self).__init__()
+        self.checkpoint_dir = cfg.checkpoint_dir
+        self.checkpoint_file = os.path.join(self.checkpoint_dir, name)
         self.learning_rate = cfg.learning_hyperparameters['learning_rate']
         self.num_actions = cfg.learning_hyperparameters['num_actions']
 
-        self.device = 'cuda' if th.cuda.is_available() else 'cpu'
+        # convolutions to process observations and pass then to fully connected layers
+        self.conv1 = nn.Conv2d(input_dims[0], 32, 8, stride=4)  # input_dims[0]: number of channels, 32: number of 
+        # outgoing filters, 8: kernel size (8*8 pixels)
+        self.conv2 = nn.Conv2d(32, 64, 4, stride=2)  # 32: number of incoming filters, 64: number of outgoing filters
+        self.conv3 = nn.Conv2d(64, 64, 3, stride=1)  # convolutions to process observations and pass then to fully connected layers
 
-        # Build the Modules
-        self.relu = nn.ReLU()
-        self.fc_1 = nn.Linear(self.dimension ** 2, self.fc_sizes[0])
-        self.fc_2 = nn.Linear(self.fc_sizes[0], self.fc_sizes[1])
-        self.fc_3 = nn.Linear(self.fc_sizes[1], self.fc_sizes[2])
+        processed_input_dims = self.calculate_output_dims(input_dims)
+        
+        self.fc1 = nn.Linear(processed_input_dims, 512)
+        self.V = nn.Linear(512, 1)
+        self.A = nn.Linear(512, self.num_actions)
 
-        self.V = nn.Linear(self.fc_sizes[2], 1)
-        self.A = nn.Linear(self.fc_sizes[2], self.num_actions)
-
-        # self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
-        self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate,
-                                    amsgrad=True, weight_decay=0.001)
+        self.optimizer = optim.RMSprop(self.parameters(), lr=self.learning_rate)
         self.loss = nn.MSELoss()
+        self.device = th.device('cuda:0' if th.cuda.is_available() else 'cpu')  # use GPU if available
+        self.to(self.device)  # move whole model to device
 
-        self.to(self.device)  # move whole model to the device
+    def calculate_output_dims(self, input_dims):
+        state = th.zeros(1, *input_dims)
+        dims = self.conv1(state)
+        dims = self.conv2(dims)
+        dims = self.conv3(dims)
 
-    def forward(self, state):
-        # forward propagation includes defining layers
+        return int(np.prod(dims.size()))  # np.prod: to return the product of array elements over a given axis.
 
-        # features, _ = self.lstm(state)
-        # x = self.relu(features[:, -1, :])
+    def forward(self, state):  # forward propagation includes defining layers
+        conv1 = F.relu(self.conv1(state))
+        conv2 = F.relu(self.conv2(conv1))
+        conv3 = F.relu(self.conv3(conv2))  # conv3 shape is batch size * number of filters * H * W (of output image)
 
-        x = self.relu(self.fc_1(state))
-        x = self.relu(self.fc_2(x))
-        x = self.relu(self.fc_3(x))
+        conv_state = conv3.view(conv3.size()[0], -1) # means that get the first dim and flatten others
 
-        V = self.V(x)
-        A = self.A(x)
+        flat1 = F.relu(self.fc1(conv_state))
+        V = self.V(flat1)
+        A = self.A(flat1)
 
         return V, A
 
-    def save_checkpoint(self, checkpoint_file):
-        th.save(self.state_dict(), checkpoint_file)
+    def save_checkpoint(self):
+        print('... saving checkpoint ...')
+        th.save(self.state_dict(), self.checkpoint_file)
 
-    def load_checkpoint(self, checkpoint_file):
-        self.load_state_dict(th.load(checkpoint_file))
+    def load_checkpoint(self):
+        print('... loading checkpoint ...')
+        self.load_state_dict(th.load(self.checkpoint_file))
 
 
 # noinspection PyUnresolvedReferences
@@ -156,8 +160,9 @@ class D3QL:
         self.models_initial_weights = np.empty(self.num_agents, dtype=object)
 
         for i in range(self.num_agents):
-            self.models[i] = DeepQNetwork(self.num_agents, self.dimension)
-            self.target_models[i] = DeepQNetwork(self.num_agents, self.dimension)
+            # lr, n_actions, name, input_dims, checkpoint_dir
+            self.models[i] = DeepQNetwork(f'model_{i}', self.dimension)
+            self.target_models[i] = DeepQNetwork(f'target_model_{i}', self.dimension)
 
             if cfg.load_pretrained_model:
                 file = f'results/{self.folder_name}/algo_{self.algorithm}/model_{i}.pt'
@@ -183,7 +188,7 @@ class D3QL:
 
     def get_model_output(self, observation, i):
 
-        observation = th.tensor(observation, dtype=th.float).to(self.device).unsqueeze(0)
+        observation = th.tensor(observation, dtype=th.float).to(self.device).view(1, *self.dimension)
         value, advantages = self.models[i].forward(observation)
 
         action = th.argmax(advantages).item()
@@ -229,7 +234,12 @@ class D3QL:
         self.learn_step_counter += 1
 
         return loss.detach().cpu().numpy()
-
+    
+    def save_models(self):
+        for i in range(self.num_agents):
+            file = f'output_results/model_{i}.pt'
+            self.models[i].save_checkpoint(file)
+            
     def get_weights(self):
         return self.model.state_dict(), self.target_model.state_dict()
 
