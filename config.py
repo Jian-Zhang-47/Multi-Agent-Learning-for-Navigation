@@ -1,17 +1,23 @@
 from gymnasium import spaces
+
 # Environment
 
+# 'random', 'independent_D3QL', 'CTDE_D3QL'
+algorithm = 'random'
+
 L = 100  # Grid size
-P = 0.1  # Number of obstacles (as a percentage to grid size)
+P = 0.1  # Number of obstacles (as a ratio of grid size)
 N = 1  # Number of agents
 T = 1000  # Maximum episode length
 M = 50  # Agent FoV size
-action_space = spaces.Discrete(4)
+view_angle = 360
+move_offsets = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
 # RL
 episode_num = 1000
 memory_size = 100
 batch_size = 32
+new_grid_per_episode = False
 
 learning_hyperparameters = {
     'fc_sizes': [32, 16, 8],
