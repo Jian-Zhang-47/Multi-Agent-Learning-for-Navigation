@@ -128,10 +128,13 @@ class GridNavigationEnv(gym.Env):
                     fov_circle.append(ij_pos)
 
         if self.view_angle < 180:
-            # Gradient of the 1st view field boundary
-            g1 = round(-1 / math.tan(math.radians(self.view_angle / 2)), 4)
-            # Gradient of the 2nd view field boundary
-            g2 = round(1 / math.tan(math.radians(self.view_angle / 2)), 4)
+            # Gradient of the view field boundary when move to up or down
+            g1 = -1 * math.tan(math.radians(self.view_angle / 2))
+            g2 = math.tan(math.radians(self.view_angle / 2))
+            # Gradient of the view field boundary when move to left or right
+            g3 = -1 / math.tan(math.radians(self.view_angle / 2))
+            g4 = 1 / math.tan(math.radians(self.view_angle / 2))
+
             for p in fov_circle:
                 # Gradient of the line between grid and agent
                 g_p = self.calculate_gradient(agent_pos, p)
@@ -142,15 +145,19 @@ class GridNavigationEnv(gym.Env):
                     if g1 <= g_p <= g2 and p[0] >= x:
                         fov.append(p)
                 elif dx == 0 and dy == -1:  # Move to left
-                    if (g_p <= g1 or g_p >= g2 or g_p == float('inf')) and p[1] <= y:
+                    if (g_p <= g3 or g_p >= g4 or g_p == float('inf')) and p[1] <= y:
                         fov.append(p)
                 elif dx == 0 and dy == 1:  # Move to right
-                    if (g_p <= g1 or g_p >= g2 or g_p == float('inf')) and p[1] >= y:
+                    if (g_p <= g3 or g_p >= g4 or g_p == float('inf')) and p[1] >= y:
                         fov.append(p)
 
         elif 180 <= self.view_angle < 360:
-            g1 = -1 / math.tan(math.radians((360 - self.view_angle) / 2))
-            g2 = 1 / math.tan(math.radians((360 - self.view_angle) / 2))
+            # Gradient of the view field boundary when move to up or down
+            g1 = -1 * math.tan(math.radians((360 - self.view_angle) / 2))
+            g2 = math.tan(math.radians((360 - self.view_angle) / 2))
+            # Gradient of the view field boundary when move to left or right
+            g3 = -1 / math.tan(math.radians((360 - self.view_angle) / 2))
+            g4 = 1 / math.tan(math.radians((360 - self.view_angle) / 2))
             for p in fov_circle:
                 # Gradient of the line between grid and agent
                 g_p = self.calculate_gradient(agent_pos, p)
@@ -167,12 +174,12 @@ class GridNavigationEnv(gym.Env):
                 elif dx == 0 and dy == -1:  # Move to left
                     if p[1] <= y:
                         fov.append(p)
-                    elif p[1] > y and (g1 <= g_p <= g2):
+                    elif p[1] > y and (g3 <= g_p <= g4):
                         fov.append(p)
                 elif dx == 0 and dy == 1:  # Move to right
                     if p[1] >= y:
                         fov.append(p)
-                    elif p[1] < y and (g1 <= g_p <= g2):
+                    elif p[1] < y and (g3 <= g_p <= g4):
                         fov.append(p)
 
         elif self.view_angle == 360:
@@ -360,32 +367,32 @@ class GridNavigationEnv(gym.Env):
             for row in FoV_map:
                 print('  '.join(str(x) for x in row))
 
-# if __name__ == "__main__":
-#     env = GridNavigationEnv()
-#     env.init_environment()
-#     observation = env.reset()
-#     done = False
-#     terminate = False
-#     print(f'In 0 step')
-#     env.render()
-#     # env.render_fov(env.fov_rel)
-#     print(utils.dict_to_arr(env.fov_rel))
-#     print()
-#
-#     while not done and not terminate:
-#         actions = [env.action_space.sample()
-#                    for _ in range(env.N)]  # Random actions
-#         observation, rewards, terminate, info, done = env.step(actions)
-#         print(f"In {info['steps_number']} steps")
-#         print(f"Reward: {rewards}")
-#         env.render()
-#         print('')
-#         env.render_fov(env.fov_rel)
-#         print(env.fov_rel)
-#         print(observation)
-#         print('')
-#     print(f"Destination: {info['destination']}")
-#     print(f"Reward: {rewards}")
-#     print(f"All agents have reached the destination: {done}")
-#     print(f"Some agents are stuck somewhere: {terminate}")
-#     print(f"Route: {info['agents_route']}\n")
+if __name__ == "__main__":
+    env = GridNavigationEnv()
+    env.init_environment()
+    observation = env.reset()
+    done = False
+    terminate = False
+    print(f'In 0 step')
+    env.render()
+    # env.render_fov(env.fov_rel)
+    print(utils.dict_to_arr(env.fov_rel))
+    print()
+
+    while not done and not terminate:
+        actions = [env.action_space.sample()
+                   for _ in range(env.N)]  # Random actions
+        observation, rewards, terminate, info, done = env.step(actions)
+        print(f"In {info['steps_number']} steps")
+        print(f"Reward: {rewards}")
+        env.render()
+        print('')
+        env.render_fov(env.fov_rel)
+        print(env.fov_rel)
+        print(observation)
+        print('')
+    print(f"Destination: {info['destination']}")
+    print(f"Reward: {rewards}")
+    print(f"All agents have reached the destination: {done}")
+    print(f"Some agents are stuck somewhere: {terminate}")
+    print(f"Route: {info['agents_route']}\n")
