@@ -1,9 +1,11 @@
-from copy import copy, deepcopy
-import gymnasium as gym
-from gymnasium import spaces
-import numpy as np
-import random
 import math
+import random
+from copy import deepcopy
+
+import gymnasium as gym
+import numpy as np
+from gymnasium import spaces
+
 import config as cfg
 import utils
 
@@ -145,6 +147,7 @@ class GridNavigationEnv(gym.Env):
                 elif dx == 0 and dy == 1:  # Move to right
                     if (g_p <= g1 or g_p >= g2 or g_p == float('inf')) and p[1] >= y:
                         fov.append(p)
+
         elif 180 <= self.view_angle < 360:
             g1 = -1 / math.tan(math.radians((360 - self.view_angle) / 2))
             g2 = 1 / math.tan(math.radians((360 - self.view_angle) / 2))
@@ -303,7 +306,7 @@ class GridNavigationEnv(gym.Env):
         else:
             self.restore_initial_state()
 
-        observation = utils.dict_to_arr(self.fov_rel)
+        observation = np.expand_dims(utils.dict_to_arr(self.fov_rel), axis=1)
 
         return observation
 
@@ -312,31 +315,32 @@ class GridNavigationEnv(gym.Env):
             if self.agents[a_id - 1] == self.destination:
                 self.agents_id_list.remove(a_id)
             else:
+
+                distance_before_move = self.calculate_distance(
+                    self.agents[a_id - 1], self.destination)
+
                 self.move_agent(a_id, actions[a_id - 1])
+
                 distance = self.calculate_distance(
                     self.agents[a_id - 1], self.destination)
+
                 # Record the distance in dict
                 self.distance_dict[a_id].append(distance)
                 if distance == 0:
                     # Reward for reaching destination
-                    self.rewards[a_id - 1] = 1.5 * self.L
+                    self.rewards[a_id - 1] = 1.0 * self.L
                     self.agents_id_list.remove(a_id)
                 else:
-                    self.rewards[a_id - 1] = 1.5 * self.L / \
-                                             distance  # Penalty for each move
+                    self.rewards[a_id - 1] = (distance_before_move - distance)  # Penalty for each move
 
         self.steps += 1
         done = all(self.agents[agent_id - 1] == self.destination
                    for agent_id in self.agents_id_list)
         terminate = self.steps >= self.T
-        observation = utils.dict_to_arr(self.fov_rel)
+        observation = np.expand_dims(utils.dict_to_arr(self.fov_rel), axis=1)
         rewards = self.rewards
-        info = {}
-        info['grid_map'] = self.grid
-        info['agents_route'] = self.agents_route_dict
-        info['steps_number'] = self.steps
-        info['distances'] = self.distance_dict
-        info['destination'] = self.destination
+        info = {'grid_map': self.grid, 'agents_route': self.agents_route_dict, 'steps_number': self.steps,
+                'distances': self.distance_dict, 'destination': self.destination}
         return observation, rewards, terminate, info, done
 
     def render(self, mode='human'):
@@ -355,7 +359,6 @@ class GridNavigationEnv(gym.Env):
             print(f"Fov map for Agent {key}:")
             for row in FoV_map:
                 print('  '.join(str(x) for x in row))
-
 
 # if __name__ == "__main__":
 #     env = GridNavigationEnv()
