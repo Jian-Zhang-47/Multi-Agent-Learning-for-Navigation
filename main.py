@@ -91,10 +91,12 @@ for ep in progress_bar:
         # Record distance for each step
         step_distances.append(info['distances'])
 
-    # Collecting route for CSV logging     
-    for i in range(cfg.N):
-        agents_route_H.append(
-            {'No.': len(agents_route_H), 'episode_num': ep, 'agent ID': i + 1, 'route': info['agents_route'][i + 1]})
+    # Collecting route for CSV logging  
+    for i in range(cfg.T):
+        row = {'No.': len(agents_route_H) + 1, 'step_num': i, 'episode_num': ep}
+        for agent_id in info['agents_route'].keys():
+            row[f'agent ID {agent_id}'] = info['agents_route'][agent_id][i] if i < len(info['agents_route'][agent_id]) else None
+        agents_route_H.append(row)
 
     is_successful[ep] = done
     average_rewards[ep] = np.array(rewards_this_episode).mean() if len(
@@ -185,7 +187,7 @@ def save_to_csv(filename, data, fieldnames):
 
 observation_fieldnames = ['No.', 'episode_num', 'agent ID', 'observation']
 action_fieldnames = ['No.', 'episode_num', 'agent ID', 'action']
-route_fieldnames = ['No.', 'episode_num', 'agent ID', 'route']
+route_fieldnames = ['No.', 'step_num', 'episode_num'] + [f'agent ID {i}' for i in info['agents_route'].keys()]
 
 save_to_csv(os.path.join(output_folder, 'observations.csv'), observations_H, observation_fieldnames)
 save_to_csv(os.path.join(output_folder, 'actions.csv'), actions_H, action_fieldnames)
