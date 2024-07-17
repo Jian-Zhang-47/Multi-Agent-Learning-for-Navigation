@@ -16,7 +16,7 @@ env = GridNavigationEnv()
 observation = env.reset()
 
 fov_size = (2 * cfg.M) + 1
-dimension = (1, fov_size, fov_size)
+dimension = (3, fov_size, fov_size)
 buffer = ReplayBuffer(cfg.memory_size, cfg.N, dimension)
 d3ql_algorithm = D3QL(cfg.N, dimension)
 
@@ -64,8 +64,8 @@ for ep in progress_bar:
 
         actions_encoded = np.array(
             [utils.return_one_hot_vector(a) for a in actions])
-        buffer.store_experience(old_observation,
-                                observation,
+        buffer.store_experience(old_observation.reshape((cfg.N, *dimension)),
+                                observation.reshape((cfg.N, *dimension)),
                                 actions_encoded, rewards, done or terminate)
 
         # Collecting observation, action for CSV logging

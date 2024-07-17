@@ -36,6 +36,7 @@ class GridNavigationEnv(gym.Env):
         self.destination = None
         self.steps = 0  # Number of steps
         self.rewards = np.zeros(self.N)  # Rewards of agents
+        self.observation = np.zeros((self.N, 3, 2 * self.M + 1, 2 * self.M + 1))
         # Distance between agents and destination
         self.distance_dict = {i + 1: [] for i in range(self.N)}
         self.fov = {i + 1: [] for i in range(self.N)}  # FoV of agents
@@ -313,16 +314,19 @@ class GridNavigationEnv(gym.Env):
         else:
             self.restore_initial_state()
 
-        observation = np.expand_dims(utils.dict_to_arr(self.fov_rel), axis=1)
+        for agent_id in range(1, self.N + 1):
+            for (i, j), state in self.fov_rel[agent_id].items():               
+                self.observation[agent_id - 1, 0, i, j] = utils.replace_element(state)
+                self.observation[agent_id - 1, 1, i, j] = self.calculate_distance(self.agents[agent_id - 1], self.destination) / self.L
+                self.observation[agent_id - 1, 2, i, j] = self.calculate_gradient(self.agents[agent_id - 1], self.destination)
 
-        return observation
+        return self.observation
 
     def step(self, actions):
         for a_id in self.agents_id_list[:]:
             if self.agents[a_id - 1] == self.destination:
                 self.agents_id_list.remove(a_id)
             else:
-
                 distance_before_move = self.calculate_distance(
                     self.agents[a_id - 1], self.destination)
 
@@ -344,11 +348,18 @@ class GridNavigationEnv(gym.Env):
         done = all(self.agents[agent_id - 1] == self.destination
                    for agent_id in self.agents_id_list)
         terminate = self.steps >= self.T
-        observation = np.expand_dims(utils.dict_to_arr(self.fov_rel), axis=1)
+
+        for agent_id in range(1, self.N + 1):
+            for (i, j), state in self.fov_rel[agent_id].items():               
+                self.observation[agent_id - 1, 0, i, j] = utils.replace_element(state)
+                self.observation[agent_id - 1, 1, i, j] = self.calculate_distance(self.agents[agent_id - 1], self.destination) / self.L
+                self.observation[agent_id - 1, 2, i, j] = self.calculate_gradient(self.agents[agent_id - 1], self.destination)
+
+
         rewards = self.rewards
         info = {'grid_map': self.grid, 'agents_route': self.agents_route_dict, 'steps_number': self.steps,
                 'distances': self.distance_dict, 'destination': self.destination}
-        return observation, rewards, terminate, info, done
+        return self.observation, rewards, terminate, info, done
 
     def render(self, mode='human'):
         for row in self.grid:
@@ -367,32 +378,32 @@ class GridNavigationEnv(gym.Env):
             for row in FoV_map:
                 print('  '.join(str(x) for x in row))
 
-if __name__ == "__main__":
-    env = GridNavigationEnv()
-    env.init_environment()
-    observation = env.reset()
-    done = False
-    terminate = False
-    print(f'In 0 step')
-    env.render()
-    # env.render_fov(env.fov_rel)
-    print(utils.dict_to_arr(env.fov_rel))
-    print()
+# if __name__ == "__main__":
+#     env = GridNavigationEnv()
+#     env.init_environment()
+#     observation = env.reset()
+#     done = False
+#     terminate = False
+#     print(f'In 0 step')
+#     env.render()
+#     # env.render_fov(env.fov_rel)
+#     print(utils.dict_to_arr(env.fov_rel))
+#     print()
 
-    while not done and not terminate:
-        actions = [env.action_space.sample()
-                   for _ in range(env.N)]  # Random actions
-        observation, rewards, terminate, info, done = env.step(actions)
-        print(f"In {info['steps_number']} steps")
-        print(f"Reward: {rewards}")
-        env.render()
-        print('')
-        env.render_fov(env.fov_rel)
-        print(env.fov_rel)
-        print(observation)
-        print('')
-    print(f"Destination: {info['destination']}")
-    print(f"Reward: {rewards}")
-    print(f"All agents have reached the destination: {done}")
-    print(f"Some agents are stuck somewhere: {terminate}")
-    print(f"Route: {info['agents_route']}\n")
+#     while not done and not terminate:
+#         actions = [env.action_space.sample()
+#                    for _ in range(env.N)]  # Random actions
+#         observation, rewards, terminate, info, done = env.step(actions)
+#         print(f"In {info['steps_number']} steps")
+#         print(f"Reward: {rewards}")
+#         env.render()
+#         print('')
+#         env.render_fov(env.fov_rel)
+#         # print(env.fov_rel)
+#         print(observation)
+#         print('')
+#     print(f"Destination: {info['destination']}")
+#     print(f"Reward: {rewards}")
+#     print(f"All agents have reached the destination: {done}")
+#     print(f"Some agents are stuck somewhere: {terminate}")
+#     print(f"Route: {info['agents_route']}\n")
