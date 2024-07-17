@@ -1,20 +1,22 @@
-from model import ReplayBuffer
-from model import D3QL
-from matplotlib import pyplot as plt
-from GridNavigationEnv import GridNavigationEnv
-import config as cfg
-import numpy as np
-from copy import copy
-import utils
-import os
 import csv
-import torch
+import os
+from copy import copy
+
+import numpy as np
+import tqdm
+from matplotlib import pyplot as plt
+
+import config as cfg
+import utils
+from GridNavigationEnv import GridNavigationEnv
+from model import D3QL
+from model import ReplayBuffer
 
 env = GridNavigationEnv()
 observation = env.reset()
 
 fov_size = (2 * cfg.M) + 1
-dimension = (3, fov_size, fov_size)
+dimension = (1, fov_size, fov_size)
 buffer = ReplayBuffer(cfg.memory_size, cfg.N, dimension)
 d3ql_algorithm = D3QL(cfg.N, dimension)
 
@@ -35,14 +37,14 @@ agents_route_H = []
 loss_H = []
 step_distances = []
 
-for ep in range(cfg.episode_num):
+progress_bar = tqdm.trange(cfg.episode_num, desc='Progress', leave=True)
+
+for ep in progress_bar:
+
     done = False
     terminate = False
-    ob = env.reset()
-    ob_expanded = np.expand_dims(ob, axis=1)
-    observation = np.repeat(ob_expanded, 3, axis=1)
-    print(f"observation shape: {observation.shape}")
-    print(f'starting episode {ep + 1}')
+    observation = env.reset()
+    # print(f"observation shape: {observation.shape}")
     rewards_this_episode = []
 
     while not done and not terminate:
@@ -56,9 +58,8 @@ for ep in range(cfg.episode_num):
             actions = np.array([d3ql_algorithm.get_model_output(observation[i, :, :].reshape(1, *dimension), i)
                                 for i in range(env.N)])  # Intelligent actions
 
-        ob, rewards, terminate, info, done = env.step(actions)
-        ob_expanded = np.expand_dims(ob, axis=1)
-        observation = np.repeat(ob_expanded, 3, axis=1)
+        observation, rewards, terminate, info, done = env.step(actions)
+
         rewards_this_episode.append(rewards.mean())
 
         actions_encoded = np.array(
@@ -102,6 +103,9 @@ for ep in range(cfg.episode_num):
         value for sublist in info['distances'].values() for value in sublist]
     distance_episodes[ep] = sum(distance_all_value) / len(distance_all_value)
     rate_distance_over_step[ep] = distance_episodes[ep] / info['steps_number']
+
+    progress_bar.set_description(f"Avg. Distance: {int(distance_episodes[ep])}")
+    progress_bar.refresh()
 
 print('*****************************************')
 print(f'Success rate for {cfg.episode_num} episodes was {is_successful.mean() * 100}%')
