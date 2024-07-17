@@ -1,11 +1,12 @@
+import os
 from abc import ABC
 
 import numpy as np
 import torch as th
-import torch.nn.functional as F
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
-import os
+
 import config as cfg
 
 th.cuda.empty_cache()
@@ -26,7 +27,7 @@ class ReplayBuffer(ABC):
         self.device = 'cuda' if th.cuda.is_available() else 'cpu'
 
         self.state_memory = np.zeros(
-            (self.capacity,self.num_agents, *self.dimension),
+            (self.capacity, self.num_agents, *self.dimension),
             dtype=np.float32)
         self.next_state_memory = np.zeros(
             (self.capacity, self.num_agents, *self.dimension),
@@ -95,10 +96,11 @@ class DeepQNetwork(nn.Module):
         self.conv1 = nn.Conv2d(input_dims[0], 32, 8, stride=4)  # input_dims[0]: number of channels, 32: number of 
         # outgoing filters, 8: kernel size (8*8 pixels)
         self.conv2 = nn.Conv2d(32, 64, 4, stride=2)  # 32: number of incoming filters, 64: number of outgoing filters
-        self.conv3 = nn.Conv2d(64, 64, 3, stride=1)  # convolutions to process observations and pass then to fully connected layers
+        self.conv3 = nn.Conv2d(64, 64, 3, stride=1)  # convolutions to process observations
+        # and pass then to fully connected layers
 
         processed_input_dims = self.calculate_output_dims(input_dims)
-        
+
         self.fc1 = nn.Linear(processed_input_dims, 512)
         self.V = nn.Linear(512, 1)
         self.A = nn.Linear(512, self.num_actions)
@@ -121,7 +123,7 @@ class DeepQNetwork(nn.Module):
         conv2 = F.relu(self.conv2(conv1))
         conv3 = F.relu(self.conv3(conv2))  # conv3 shape is batch size * number of filters * H * W (of output image)
 
-        conv_state = conv3.view(conv3.size()[0], -1) # means that get the first dim and flatten others
+        conv_state = conv3.view(conv3.size()[0], -1)  # means that get the first dim and flatten others
 
         flat1 = F.relu(self.fc1(conv_state))
         V = self.V(flat1)
@@ -129,13 +131,13 @@ class DeepQNetwork(nn.Module):
 
         return V, A
 
-    def save_checkpoint(self):
+    def save_checkpoint(self, file):
         print('... saving checkpoint ...')
-        th.save(self.state_dict(), self.checkpoint_file)
+        th.save(self.state_dict(), file)
 
-    def load_checkpoint(self):
+    def load_checkpoint(self, file):
         print('... loading checkpoint ...')
-        self.load_state_dict(th.load(self.checkpoint_file))
+        self.load_state_dict(th.load(file))
 
 
 # noinspection PyUnresolvedReferences
@@ -207,7 +209,7 @@ class D3QL:
             self.__replace_target_networks(model_index=i)
 
             V_states, A_states = self.models[i].forward(states[:, i, :])
-            actions_num = np.nonzero(actions[:,i,:])[:, 1:]
+            actions_num = np.nonzero(actions[:, i, :])[:, 1:]
             q_values = self.__convert_value_advantage_to_q_values(V_states, A_states)
             for d in self.indexes:
                 # Ensure the correct indexing
@@ -234,12 +236,12 @@ class D3QL:
         self.learn_step_counter += 1
 
         return loss.detach().cpu().numpy()
-    
+
     def save_models(self):
         for i in range(self.num_agents):
             file = f'output_results/model_{i}.pt'
             self.models[i].save_checkpoint(file)
-            
+
     def get_weights(self):
         return self.model.state_dict(), self.target_model.state_dict()
 
