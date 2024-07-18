@@ -8,6 +8,7 @@ from gymnasium import spaces
 
 import config as cfg
 import utils
+from matplotlib import pyplot as plt
 
 
 class GridNavigationEnv(gym.Env):
@@ -315,14 +316,16 @@ class GridNavigationEnv(gym.Env):
             self.restore_initial_state()
 
         for agent_id in range(1, self.N + 1):
+            x,y = self.agents[agent_id - 1]
             for (i, j), state in self.fov_rel[agent_id].items():               
                 self.observation[agent_id - 1, 0, i, j] = utils.replace_element(state)
-                self.observation[agent_id - 1, 1, i, j] = self.calculate_distance(self.agents[agent_id - 1], self.destination) / self.L
-                self.observation[agent_id - 1, 2, i, j] = self.calculate_gradient(self.agents[agent_id - 1], self.destination)
+                self.observation[agent_id - 1, 1, i, j] = self.calculate_distance((x + i - self.M,y + j - self.M), self.destination) / self.L
+                self.observation[agent_id - 1, 2, i, j] = self.calculate_gradient((x + i - self.M,y + j - self.M), self.destination)
 
         return self.observation
-
+    
     def step(self, actions):
+        self.observation = np.zeros((self.N, 3, 2 * self.M + 1, 2 * self.M + 1))
         for a_id in self.agents_id_list[:]:
             if self.agents[a_id - 1] == self.destination:
                 self.agents_id_list.remove(a_id)
@@ -343,18 +346,19 @@ class GridNavigationEnv(gym.Env):
                     self.agents_id_list.remove(a_id)
                 else:
                     self.rewards[a_id - 1] = (distance_before_move - distance)  # Penalty for each move
-
+        
         self.steps += 1
+        # print(f"In {self.steps} steps")
         done = all(self.agents[agent_id - 1] == self.destination
                    for agent_id in self.agents_id_list)
         terminate = self.steps >= self.T
-
         for agent_id in range(1, self.N + 1):
+            x,y = self.agents[agent_id - 1]
             for (i, j), state in self.fov_rel[agent_id].items():               
                 self.observation[agent_id - 1, 0, i, j] = utils.replace_element(state)
-                self.observation[agent_id - 1, 1, i, j] = self.calculate_distance(self.agents[agent_id - 1], self.destination) / self.L
-                self.observation[agent_id - 1, 2, i, j] = self.calculate_gradient(self.agents[agent_id - 1], self.destination)
-
+                self.observation[agent_id - 1, 1, i, j] = self.calculate_distance((x + i - self.M,y + j - self.M), self.destination)# / self.L
+                self.observation[agent_id - 1, 2, i, j] = self.calculate_gradient((x + i - self.M,y + j - self.M), self.destination)
+        # print(f'OB:{self.observation}')
 
         rewards = self.rewards
         info = {'grid_map': self.grid, 'agents_route': self.agents_route_dict, 'steps_number': self.steps,
@@ -378,32 +382,74 @@ class GridNavigationEnv(gym.Env):
             for row in FoV_map:
                 print('  '.join(str(x) for x in row))
 
-# if __name__ == "__main__":
-#     env = GridNavigationEnv()
-#     env.init_environment()
-#     observation = env.reset()
-#     done = False
-#     terminate = False
-#     print(f'In 0 step')
-#     env.render()
-#     # env.render_fov(env.fov_rel)
-#     print(utils.dict_to_arr(env.fov_rel))
-#     print()
+if __name__ == "__main__":
+    env = GridNavigationEnv()
+    env.init_environment()
+    observation = env.reset()
+    done = False
+    terminate = False
+    print(f'In 0 step')
+    env.render()
+    env.render_fov(env.fov_rel)
+    print(utils.dict_to_arr(env.fov_rel))
+    print()
 
-#     while not done and not terminate:
-#         actions = [env.action_space.sample()
-#                    for _ in range(env.N)]  # Random actions
-#         observation, rewards, terminate, info, done = env.step(actions)
-#         print(f"In {info['steps_number']} steps")
-#         print(f"Reward: {rewards}")
-#         env.render()
-#         print('')
-#         env.render_fov(env.fov_rel)
-#         # print(env.fov_rel)
-#         print(observation)
-#         print('')
-#     print(f"Destination: {info['destination']}")
-#     print(f"Reward: {rewards}")
-#     print(f"All agents have reached the destination: {done}")
-#     print(f"Some agents are stuck somewhere: {terminate}")
-#     print(f"Route: {info['agents_route']}\n")
+    while not done and not terminate:
+        actions = [env.action_space.sample()
+                   for _ in range(env.N)]  # Random actions
+        observation, rewards, terminate, info, done = env.step(actions)
+        # print(f"Reward: {rewards}")
+        env.render()
+        print('')
+        env.render_fov(env.fov_rel)
+        # # print(env.fov_rel)
+        # print(observation)
+        # print('')
+    # print(f"Destination: {info['destination']}")
+    # print(f"Reward: {rewards}")
+    # print(f"All agents have reached the destination: {done}")
+    # print(f"Some agents are stuck somewhere: {terminate}")
+    # print(f"Route: {info['agents_route']}\n")
+
+    # Observation figures
+    print(f'Grid:{env.grid}')
+    for a_id in env.agents_id_list:
+        print(f'des:{env.destination},agent:{env.agents[a_id-1]}')
+        first_channel = observation[a_id - 1, 0, :, :]
+        second_channel = observation[a_id - 1, 1, :, :]
+        third_channel = observation[a_id - 1, 2, :, :]
+        state_map = env.fov_rel[a_id]
+        a_x , a_y = env.agents[a_id - 1]
+        fig, axes = plt.subplots(4, figsize=(20, 20))
+
+        axes[0].imshow(env.grid)
+        axes[1].imshow(env.grid)
+        axes[2].imshow(env.grid)
+        axes[3].imshow(env.grid)
+
+        for k, v in state_map.items():
+
+            x, y = k[0], k[1]  
+
+            axes[0].text(a_y + y -env.M, a_x + x -env.M, v, color='black', fontsize=12, ha='center')
+
+            axes[1].text(a_y + y -env.M, a_x + x -env.M, np.round(first_channel[x , y], 0), 
+                        color='black', fontsize=12, ha='center')
+
+            axes[2].text(a_y + y -env.M, a_x + x -env.M, np.round(second_channel[x , y], 6),
+                        color='black', fontsize=8, ha='center')
+
+            axes[3].text(a_y + y -env.M, a_x + x -env.M, np.round(third_channel[x , y], 6), 
+                        color='black', fontsize=8, ha='center')
+
+        axes[0].text(env.destination[1], env.destination[0], 'Dst', color='red', fontsize=12, ha='center')
+        axes[1].text(env.destination[1], env.destination[0], 'Dst', color='red', fontsize=12, ha='center')
+        axes[2].text(env.destination[1], env.destination[0], 'Dst', color='red', fontsize=12, ha='center')
+        axes[3].text(env.destination[1], env.destination[0], 'Dst', color='red', fontsize=12, ha='center')
+
+        axes[0].set_title('State map')
+        axes[1].set_title('obs 1st channel (State map encoded)')
+        axes[2].set_title('obs 2nd channel (distances)')
+        axes[3].set_title('obs 3rd channel (angles)')
+
+        plt.savefig(f'Observation for agent{a_id}.png')
