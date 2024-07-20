@@ -114,11 +114,11 @@ print(f'Success rate for {cfg.episode_num} episodes was {is_successful.mean() * 
 print(f'Average reward for {cfg.episode_num} episodes was {round(average_rewards.mean(), 3)}')
 print('*****************************************')
 
-d3ql_algorithm.save_models()
-
 output_folder = 'output_results'
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)
+
+d3ql_algorithm.save_models()
 print_file_path = os.path.join(output_folder, 'results.txt')
 with open(print_file_path, 'w') as f:
     f.write(f'Success rate for {cfg.episode_num} episodes was {is_successful.mean() * 100}%\n')
