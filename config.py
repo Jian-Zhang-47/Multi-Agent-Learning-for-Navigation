@@ -1,5 +1,8 @@
 from gymnasium import spaces
 
+# simple, variable_M, ...
+scenario = 'simple'
+
 # Environment
 
 # 'random', 'independent_D3QL', 'CTDE_D3QL'
