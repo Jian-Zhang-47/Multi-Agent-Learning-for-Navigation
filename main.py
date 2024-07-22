@@ -1,16 +1,18 @@
-import csv
-import os
-from copy import copy
-
-import numpy as np
-import tqdm
-from matplotlib import pyplot as plt
-
 import config as cfg
-import utils
-from GridNavigationEnv import GridNavigationEnv
-from model import D3QL
-from model import ReplayBuffer
+from simulation_runner import SimulationRunner
+
+if cfg.scenario == 'simple':
+    simulation_runner = SimulationRunner(cfg)
+    simulation_runner.run_one_episode()
+    simulation_runner.save_results()
+elif cfg.scenario == 'variable_M':
+    for M in [10, 20, 30, 40]:
+        cfg.M = M
+        simulation_runner = SimulationRunner(cfg)
+        simulation_runner.run_one_episode()
+        simulation_runner.save_results(name=f'M_{M}')
+
+"""
 
 env = GridNavigationEnv()
 observation = env.reset()
@@ -192,3 +194,5 @@ route_fieldnames = ['No.', 'step_num', 'episode_num'] + [f'agent ID {i}' for i i
 save_to_csv(os.path.join(output_folder, 'observations.csv'), observations_H, observation_fieldnames)
 save_to_csv(os.path.join(output_folder, 'actions.csv'), actions_H, action_fieldnames)
 save_to_csv(os.path.join(output_folder, 'agents_route.csv'), agents_route_H, route_fieldnames)
+
+"""
