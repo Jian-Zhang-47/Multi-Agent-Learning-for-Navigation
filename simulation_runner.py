@@ -24,17 +24,14 @@ def save_to_csv(filename, data, fieldnames):
 class SimulationRunner:
 
     def __init__(self, cfg):
-
         self.cfg = cfg
-
         self.env = GridNavigationEnv()
         self.observation = self.env.reset()
-
         self.fov_size = (2 * self.cfg.M) + 1
         self.dimension = (3, self.fov_size, self.fov_size)
         self.buffer = ReplayBuffer(self.cfg.memory_size, self.cfg.N, self.dimension)
         self.d3ql_algorithm = D3QL(self.cfg.N, self.dimension)
-
+        
         self.is_successful = np.zeros(self.cfg.episode_num)
         self.average_rewards = np.zeros(self.cfg.episode_num)
         self.distance_episodes = np.zeros(self.cfg.episode_num)
@@ -55,7 +52,6 @@ class SimulationRunner:
         self.progress_bar = tqdm.trange(self.cfg.episode_num, desc='Progress', leave=True)
 
     def run_one_episode(self):
-
         for ep in self.progress_bar:
 
             done = False
@@ -128,12 +124,13 @@ class SimulationRunner:
                 rewards_this_episode) > 0 else 0
             distance_all_value = [
                 value for sublist in info['distances'].values() for value in sublist]
-            self.distance_episodes[ep] = sum(distance_all_value) / len(distance_all_value)
+            self.distance_episodes[ep] = sum(distance_all_value) / len(distance_all_value) if len(distance_all_value) > 0 else 0
             self.rate_distance_over_step[ep] = self.distance_episodes[ep] / info['steps_number']
 
             self.progress_bar.set_description(f"Avg. Distance: {int(self.distance_episodes[ep])}")
             self.progress_bar.refresh()
-
+        self.average_distance_of_all_episodes = sum(self.distance_episodes) / self.cfg.episode_num
+        self.average_reward_of_all_episodes = sum(self.average_rewards) / self.cfg.episode_num
     def save_results(self, name=None):
         print('*****************************************')
         print(f'Success rate for {self.cfg.episode_num} episodes was {self.is_successful.mean() * 100}%')
@@ -152,7 +149,7 @@ class SimulationRunner:
 
         plt.figure('Reward')
         if len(self.average_rewards) < self.cfg.episode_num:
-            average_rewards = np.pad(self.average_rewards, (0, self.cfg.episode_num -
+            self.average_rewards = np.pad(self.average_rewards, (0, self.cfg.episode_num -
                                                             len(self.average_rewards)), 'constant',
                                      constant_values=np.nan)
         plt.plot(range(1, self.cfg.episode_num + 1), self.average_rewards, marker='.')
@@ -161,11 +158,12 @@ class SimulationRunner:
         plt.title('Average Rewards Over Episodes')
         plt.grid(True)
         plt.savefig(os.path.join(output_folder, 'Rewards_over_Episodes.png'))
+        plt.clf()
 
         plt.figure('Distance')
-        if len(self.average_rewards) < self.cfg.episode_num:
-            average_rewards = np.pad(self.average_rewards, (0, self.cfg.episode_num -
-                                                            len(self.average_rewards)), 'constant',
+        if len(self.distance_episodes) < self.cfg.episode_num:
+            self.distance_episodes = np.pad(self.distance_episodes, (0, self.cfg.episode_num -
+                                                            len(self.distance_episodes)), 'constant',
                                      constant_values=np.nan)
         plt.plot(range(1, self.cfg.episode_num + 1), self.distance_episodes, marker='.')
         plt.xlabel('Episode')
@@ -173,6 +171,7 @@ class SimulationRunner:
         plt.title('Average Distances Over Episodes')
         plt.grid(True)
         plt.savefig(os.path.join(output_folder, 'Distances_over_Episodes.png'))
+        plt.clf()
 
         plt.figure('Epsilon')
         plt.plot(range(1, len(self.epsilon_history) + 1), self.epsilon_history, marker='.')
@@ -181,6 +180,7 @@ class SimulationRunner:
         plt.title('Epsilon Trend')
         plt.grid(True)
         plt.savefig(os.path.join(output_folder, 'Epsilon_Trend.png'))
+        plt.clf()
 
         plt.figure('Rate')
         if len(self.rate_distance_over_step) < self.cfg.episode_num:
@@ -192,6 +192,7 @@ class SimulationRunner:
         plt.title('Rate: Distance / Step_num')
         plt.grid(True)
         plt.savefig(os.path.join(output_folder, 'Rate.png'))
+        plt.clf()
 
         plt.figure('Loss')
         plt.plot(range(1, len(self.loss_H) + 1), self.loss_H, marker='.')
@@ -200,16 +201,18 @@ class SimulationRunner:
         plt.title('Loss Over Training Steps')
         plt.grid(True)
         plt.savefig(os.path.join(output_folder, 'Loss.png'))
-
+        plt.clf()
         # Save step distances as .npy file
         np.save(os.path.join(output_folder, 'distances.npy'), self.step_distances)
 
         # todo: need to be fixed
-        # observation_fieldnames = ['No.', 'episode_num', 'agent ID', 'observation']
-        # action_fieldnames = ['No.', 'episode_num', 'agent ID', 'action']
-        # route_fieldnames = (['No.', 'step_num', 'episode_num']
-        #                     + [f'agent ID {i}' for i in self.agents_route_H[-1].keys()])
-        #
-        # save_to_csv(os.path.join(output_folder, 'observations.csv'), self.observations_H, observation_fieldnames)
-        # save_to_csv(os.path.join(output_folder, 'actions.csv'), self.actions_H, action_fieldnames)
-        # save_to_csv(os.path.join(output_folder, 'agents_route.csv'), self.agents_route_H, route_fieldnames)
+        observation_fieldnames = ['No.', 'episode_num', 'agent ID', 'observation']
+        action_fieldnames = ['No.', 'episode_num', 'agent ID', 'action']
+        route_fieldnames = (['No.', 'step_num', 'episode_num']
+                            + [f'agent ID {i}' for i in range(1,self.cfg.N+1)])
+        
+        save_to_csv(os.path.join(output_folder, f'observations_M{self.cfg.M}_FoV{self.cfg.view_angle}_P{self.cfg.P}.csv'), self.observations_H, observation_fieldnames)
+        save_to_csv(os.path.join(output_folder, f'actions_M{self.cfg.M}_FoV{self.cfg.view_angle}_P{self.cfg.P}.csv'), self.actions_H, action_fieldnames)
+        save_to_csv(os.path.join(output_folder, f'agents_route_M{self.cfg.M}_FoV{self.cfg.view_angle}_P{self.cfg.P}.csv'), self.agents_route_H, route_fieldnames)
+        
+        

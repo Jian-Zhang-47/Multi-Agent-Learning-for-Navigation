@@ -96,7 +96,7 @@ class DeepQNetwork(nn.Module):
         self.conv1 = nn.Conv2d(input_dims[0], 32, 8, stride=4)  # input_dims[0]: number of channels, 32: number of 
         # outgoing filters, 8: kernel size (8*8 pixels)
         self.conv2 = nn.Conv2d(32, 64, 4, stride=2)  # 32: number of incoming filters, 64: number of outgoing filters
-        self.conv3 = nn.Conv2d(64, 64, 3, stride=1)  # convolutions to process observations
+        self.conv3 = nn.Conv2d(64, 64, 1, stride=1)  # convolutions to process observations
         # and pass then to fully connected layers
 
         processed_input_dims = self.calculate_output_dims(input_dims)

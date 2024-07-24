@@ -1,16 +1,91 @@
 import config as cfg
 from simulation_runner import SimulationRunner
+import numpy as np
+from matplotlib import pyplot as plt
+import os
 
+average_reward = []
+average_distance = []
 if cfg.scenario == 'simple':
     simulation_runner = SimulationRunner(cfg)
     simulation_runner.run_one_episode()
     simulation_runner.save_results()
 elif cfg.scenario == 'variable_M':
-    for M in [10, 20, 30, 40]:
+    for M in np.arange(10, 51, 10).tolist():
         cfg.M = M
         simulation_runner = SimulationRunner(cfg)
         simulation_runner.run_one_episode()
         simulation_runner.save_results(name=f'M_{M}')
+        average_reward.append(simulation_runner.average_reward_of_all_episodes)
+        average_distance.append(simulation_runner.average_distance_of_all_episodes)
+
+    plt.figure('Average Reward over M')
+    plt.plot(range(10, 51, 10), average_reward, marker='.')
+    plt.xlabel('M')
+    plt.ylabel('Reward')
+    plt.title('Average Reward over M')
+    plt.grid(True)
+    plt.savefig('Average Reward over M.png')
+
+    plt.figure('Average Distance over M')
+    plt.plot(range(10, 51, 10), average_distance, marker='.')
+    plt.xlabel('M')
+    plt.ylabel('Distance')
+    plt.title('Average Distance over M')
+    plt.grid(True)
+    plt.savefig('Average Distance over M.png')
+
+elif cfg.scenario == 'variable_FoV':
+    for FoV in np.arange(10, 361,50).tolist():
+        cfg.view_angle = FoV
+        simulation_runner = SimulationRunner(cfg)
+        simulation_runner.run_one_episode()
+        simulation_runner.save_results(name=f'FoV_{FoV}')
+        average_reward.append(simulation_runner.average_reward_of_all_episodes)
+        average_distance.append(simulation_runner.average_distance_of_all_episodes)
+
+    plt.figure('Average Reward over FoV')
+    plt.plot(range(10, 361, 50), average_reward, marker='.')
+    plt.xlabel('FoV')
+    plt.ylabel('Reward')
+    plt.title('Average Reward over FoV')
+    plt.grid(True)
+    plt.savefig('Average Reward over FoV.png')
+
+    plt.figure('Average Distance over FoV')
+    plt.plot(range(10, 361, 50), average_distance, marker='.')
+    plt.xlabel('FoV')
+    plt.ylabel('Distance')
+    plt.title('Average Distance over FoV')
+    plt.grid(True)
+    plt.savefig('Average Distance over FoV.png')
+
+elif cfg.scenario == 'variable_P':
+    for P in np.arange(0, 1, 0.1).tolist():
+        cfg.P = P
+        simulation_runner = SimulationRunner(cfg)
+        simulation_runner.run_one_episode()
+        simulation_runner.save_results(name=f'P_{np.round(P, 1)}')
+        average_reward.append(simulation_runner.average_reward_of_all_episodes)
+        average_distance.append(simulation_runner.average_distance_of_all_episodes)
+
+    plt.figure('Average Reward over P')
+    plt.plot(np.arange(0, 1.0, 0.1), average_reward, marker='.')
+    plt.xlabel('P')
+    plt.ylabel('Reward')
+    plt.title('Average Reward over P')
+    plt.grid(True)
+    plt.savefig('Average Reward over P.png')
+
+    plt.figure('Average Distance over P')
+    plt.plot(np.arange(0, 1.0, 0.1), average_distance, marker='.')
+    plt.xlabel('P')
+    plt.ylabel('Distance')
+    plt.title('Average Distance over P')
+    plt.grid(True)
+    plt.savefig('Average Distance over P.png')
+
+
 
 """
 
