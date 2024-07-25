@@ -1,23 +1,23 @@
 from gymnasium import spaces
 
-# simple, variable_M, ...
-scenario = 'simple'
+# simple, variable_M, variable_FoV, variable_P
+scenario = 'variable_M'
 
 # Environment
 
 # 'random', 'independent_D3QL', 'CTDE_D3QL'
-algorithm = 'random'
+algorithm = 'independent_D3QL'
 
 L = 100  # Grid size
 P = 0.1  # Number of obstacles (as a ratio of grid size)
 N = 1  # Number of agents
-T = 1000  # Maximum episode length
+T = 100  # Maximum episode length
 M = 50  # Agent FoV size
 view_angle = 360
 move_offsets = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
 # RL
-episode_num = 1000
+episode_num = 100
 memory_size = 100
 batch_size = 32
 new_grid_per_episode = False
