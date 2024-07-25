@@ -131,18 +131,18 @@ class SimulationRunner:
             self.progress_bar.refresh()
         self.average_distance_of_all_episodes = sum(self.distance_episodes) / self.cfg.episode_num
         self.average_reward_of_all_episodes = sum(self.average_rewards) / self.cfg.episode_num
-    def save_results(self, name=None):
+    def save_folder(self, name=None):
         print('*****************************************')
         print(f'Success rate for {self.cfg.episode_num} episodes was {self.is_successful.mean() * 100}%')
         print(f'Average reward for {self.cfg.episode_num} episodes was {round(self.average_rewards.mean(), 3)}')
         print('*****************************************')
 
-        output_folder = f'output_results_{name}' if name is not None else 'output_results'
+        output_folder = f'{self.cfg.output_dir}_{name}' if name is not None else f'{self.cfg.output_dir}'
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
         self.d3ql_algorithm.save_models()
-        print_file_path = os.path.join(output_folder, 'results.txt')
+        print_file_path = os.path.join(output_folder, 'folder.txt')
         with open(print_file_path, 'w') as f:
             f.write(f'Success rate for {self.cfg.episode_num} episodes was {self.is_successful.mean() * 100}%\n')
             f.write(f'Average reward for {self.cfg.episode_num} episodes was {round(self.average_rewards.mean(), 3)}')

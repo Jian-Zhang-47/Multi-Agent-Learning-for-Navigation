@@ -9,15 +9,17 @@ average_distance = []
 if cfg.scenario == 'simple':
     simulation_runner = SimulationRunner(cfg)
     simulation_runner.run_one_episode()
-    simulation_runner.save_results()
+    simulation_runner.save_folder()
 elif cfg.scenario == 'variable_M':
     for M in np.arange(10, 51, 10).tolist():
         cfg.M = M
         simulation_runner = SimulationRunner(cfg)
         simulation_runner.run_one_episode()
-        simulation_runner.save_results(name=f'M_{M}')
+        simulation_runner.save_folder(name=f'M_{M}')
         average_reward.append(simulation_runner.average_reward_of_all_episodes)
         average_distance.append(simulation_runner.average_distance_of_all_episodes)
+
+    rate = np.round(np.array(average_reward) / np.round(average_distance), 6)
 
     plt.figure('Average Reward over M')
     plt.plot(range(10, 51, 10), average_reward, marker='.')
@@ -35,14 +37,24 @@ elif cfg.scenario == 'variable_M':
     plt.grid(True)
     plt.savefig('Average Distance over M.png')
 
+    plt.figure('Average Reward/Distance over M')
+    plt.plot(range(10, 51, 10), rate, marker='.')
+    plt.xlabel('M')
+    plt.ylabel('Reward/Distance')
+    plt.title('Average Reward/Distance over M')
+    plt.grid(True)
+    plt.savefig('Average Rate over M.png')
+
 elif cfg.scenario == 'variable_FoV':
     for FoV in np.arange(10, 361,50).tolist():
         cfg.view_angle = FoV
         simulation_runner = SimulationRunner(cfg)
         simulation_runner.run_one_episode()
-        simulation_runner.save_results(name=f'FoV_{FoV}')
+        simulation_runner.save_folder(name=f'FoV_{FoV}')
         average_reward.append(simulation_runner.average_reward_of_all_episodes)
         average_distance.append(simulation_runner.average_distance_of_all_episodes)
+
+    rate = np.round(np.array(average_reward) / np.round(average_distance), 6)
 
     plt.figure('Average Reward over FoV')
     plt.plot(range(10, 361, 50), average_reward, marker='.')
@@ -60,14 +72,24 @@ elif cfg.scenario == 'variable_FoV':
     plt.grid(True)
     plt.savefig('Average Distance over FoV.png')
 
+    plt.figure('Average Reward/Distance over FoV')
+    plt.plot(range(10, 361, 50), rate, marker='.')
+    plt.xlabel('FoV')
+    plt.ylabel('Reward/Distance')
+    plt.title('Average Reward/Distance over FoV')
+    plt.grid(True)
+    plt.savefig('Average Rate over FoV.png')
+
 elif cfg.scenario == 'variable_P':
     for P in np.arange(0, 1, 0.1).tolist():
         cfg.P = P
         simulation_runner = SimulationRunner(cfg)
         simulation_runner.run_one_episode()
-        simulation_runner.save_results(name=f'P_{np.round(P, 1)}')
+        simulation_runner.save_folder(name=f'P_{np.round(P, 1)}')
         average_reward.append(simulation_runner.average_reward_of_all_episodes)
         average_distance.append(simulation_runner.average_distance_of_all_episodes)
+    
+    rate = np.round(np.array(average_reward) / np.round(average_distance), 6)
 
     plt.figure('Average Reward over P')
     plt.plot(np.arange(0, 1.0, 0.1), average_reward, marker='.')
@@ -84,6 +106,14 @@ elif cfg.scenario == 'variable_P':
     plt.title('Average Distance over P')
     plt.grid(True)
     plt.savefig('Average Distance over P.png')
+
+    plt.figure('Average Reward/Distance over P')
+    plt.plot(np.arange(0, 1.0, 0.1), rate, marker='.')
+    plt.xlabel('P')
+    plt.ylabel('Reward/Distance')
+    plt.title('Average Reward/Distance over P')
+    plt.grid(True)
+    plt.savefig('Average Rate over P.png')
 
 
 
@@ -191,12 +221,12 @@ print(f'Success rate for {cfg.episode_num} episodes was {is_successful.mean() * 
 print(f'Average reward for {cfg.episode_num} episodes was {round(average_rewards.mean(), 3)}')
 print('*****************************************')
 
-output_folder = 'output_results'
+output_folder = 'output_folder'
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)
 
 d3ql_algorithm.save_models()
-print_file_path = os.path.join(output_folder, 'results.txt')
+print_file_path = os.path.join(output_folder, 'folder.txt')
 with open(print_file_path, 'w') as f:
     f.write(f'Success rate for {cfg.episode_num} episodes was {is_successful.mean() * 100}%\n')
     f.write(f'Average reward for {cfg.episode_num} episodes was {round(average_rewards.mean(), 3)}')

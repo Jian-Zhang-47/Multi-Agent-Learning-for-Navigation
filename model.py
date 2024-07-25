@@ -167,7 +167,7 @@ class D3QL:
             self.target_models[i] = DeepQNetwork(f'target_model_{i}', self.dimension)
 
             if cfg.load_pretrained_model:
-                file = f'results/{self.folder_name}/algo_{self.algorithm}/model_{i}.pt'
+                file = f'folder/{self.folder_name}/algo_{self.algorithm}/model_{i}.pt'
                 self.models[i].load_checkpoint(file)
 
             # copy initial weights to target models
@@ -238,9 +238,10 @@ class D3QL:
         return loss.detach().cpu().numpy()
 
     def save_models(self):
-        for i in range(self.num_agents):
-            file = f'output_results/model_{i}.pt'
-            self.models[i].save_checkpoint(file)
+        if cfg.scenario == 'simple':
+            for i in range(self.num_agents):
+                file = f'{cfg.output_dir}/model_{i}.pt' 
+                self.models[i].save_checkpoint(file)
 
     def get_weights(self):
         return self.model.state_dict(), self.target_model.state_dict()
